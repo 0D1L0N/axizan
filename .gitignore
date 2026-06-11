@@ -1,0 +1,19 @@
+# Laravel
+/backend/vendor/
+/backend/node_modules/
+/backend/.env
+/backend/.env.*
+/backend/storage/
+/backend/bootstrap/cache/
+
+# Next.js
+/frontend/node_modules/
+/frontend/.next/
+/frontend/.env*
+
+# System files
+.DS_Store
+Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
