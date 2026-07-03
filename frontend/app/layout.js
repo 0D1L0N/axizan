@@ -6,6 +6,11 @@ export const metadata = {
   title: 'Axizán - Livraison Alimentaire',
   description: 'Plateforme de livraison de produits alimentaires au Bénin',
   manifest: '/manifest.json',
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
   themeColor: '#FF6B6B',
 };
 
