@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\RecurringBasketController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\FedapayController;
+use App\Http\Controllers\Api\SupplierSettlementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -148,6 +149,13 @@ Route::prefix('v1')->group(function () {
             Route::get('/payments/pending', [AdminController::class, 'pendingPayments']);
             Route::post('/orders/{id}/validate-payment', [AdminController::class, 'validatePayment']);
             Route::post('/staff', [AdminController::class, 'createStaff']);
+
+            // Le point fournisseur : ce qu'Axizán doit à chaque étal.
+            Route::get('/suppliers', [SupplierSettlementController::class, 'index']);
+            Route::get('/suppliers/{id}/statement', [SupplierSettlementController::class, 'statement']);
+            Route::post('/suppliers/{id}/settle', [SupplierSettlementController::class, 'settle']);
+            Route::get('/suppliers/{id}/prices', [SupplierSettlementController::class, 'prices']);
+            Route::put('/suppliers/{id}/prices', [SupplierSettlementController::class, 'updatePrices']);
         });
     });
 });

@@ -23,6 +23,7 @@ class OrderItem extends Model
         'removed_ingredients',
         'substitution_preference',
         'supplier_id',
+        'settlement_id',
         'replacement_product_id',
         'collection_status',
         'collected_at',

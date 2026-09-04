@@ -139,6 +139,16 @@ export const adminService = {
   /** `reference_number` est obligatoire : sans référence, le paiement n'est pas traçable. */
   validatePayment: (orderId, proof) => api.post(`/admin/orders/${orderId}/validate-payment`, proof),
   createStaff: (data) => api.post('/admin/staff', data),
+
+  /* ---- Le point fournisseur : ce qu'Axizán doit à chaque étal ---- */
+
+  getSuppliers: (marketId) =>
+    api.get('/admin/suppliers', { params: marketId ? { market_id: marketId } : {} }),
+  getSupplierStatement: (id, params) => api.get(`/admin/suppliers/${id}/statement`, { params }),
+  /** Acte le règlement et rattache les lignes couvertes. Irréversible. */
+  settleSupplier: (id, data) => api.post(`/admin/suppliers/${id}/settle`, data),
+  getSupplierPrices: (id) => api.get(`/admin/suppliers/${id}/prices`),
+  updateSupplierPrices: (id, prices) => api.put(`/admin/suppliers/${id}/prices`, { prices }),
 };
 
 export const cartService = {

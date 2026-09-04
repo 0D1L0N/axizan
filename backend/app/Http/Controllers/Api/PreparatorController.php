@@ -186,22 +186,64 @@ class PreparatorController extends Controller
             }
         }
 
-        $item->update([
+        $collected = in_array($data['collection_status'], ['collected', 'replaced'], true);
+
+        $item->update(array_merge([
             'collection_status' => $data['collection_status'],
             'supplier_id' => $data['supplier_id'] ?? $item->supplier_id,
             'replacement_product_id' => $data['collection_status'] === 'replaced'
                 ? $data['replacement_product_id']
                 : null,
-            'collected_at' => in_array($data['collection_status'], ['collected', 'replaced'], true)
-                ? now()
-                : null,
-        ]);
+            'collected_at' => $collected ? now() : null,
+        ], $this->supplierCost($item, $data, $collected)));
 
         return response()->json([
             'success' => true,
             'data' => $item->fresh()->load('product', 'supplier:id,name,stall', 'replacementProduct:id,name,price_type'),
             'meta' => $this->progressFor($order),
         ]);
+    }
+
+    /**
+     * Estampille sur la ligne ce que l'article coute chez ce fournisseur.
+     *
+     * Le preparateur ne saisit aucun prix — il retire en compte. Le montant
+     * vient du tarif convenu entre Axizan et le partenaire, et il est fige ICI,
+     * au moment du retrait. Renegocier un tarif la semaine prochaine ne doit
+     * pas faire bouger un point deja regle.
+     *
+     * Sans tarif renseigne, on laisse a null plutot que d'inventer un zero :
+     * l'ecran d'administration signale alors l'article a tarifer, au lieu de
+     * presenter une dette sous-evaluee comme si elle etait complete.
+     *
+     * C'est le produit REELLEMENT pris qui est tarife : sur un remplacement,
+     * c'est l'article de substitution qui a ete retire chez le fournisseur.
+     */
+    private function supplierCost(OrderItem $item, array $data, bool $collected): array
+    {
+        if (! $collected) {
+            return ['actual_unit_price' => null, 'actual_total_price' => null];
+        }
+
+        $supplierId = $data['supplier_id'] ?? $item->supplier_id;
+        $productId = $data['collection_status'] === 'replaced'
+            ? ($data['replacement_product_id'] ?? null)
+            : $item->product_id;
+
+        if (! $supplierId || ! $productId) {
+            return ['actual_unit_price' => null, 'actual_total_price' => null];
+        }
+
+        $unit = \App\Models\SupplierPrice::priceFor($supplierId, $productId);
+
+        if ($unit === null) {
+            return ['actual_unit_price' => null, 'actual_total_price' => null];
+        }
+
+        return [
+            'actual_unit_price' => $unit,
+            'actual_total_price' => \App\Support\Money::lineTotal($unit, (float) $item->quantity),
+        ];
     }
 
     public function accept($id, Request $request)

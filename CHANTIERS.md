@@ -470,3 +470,60 @@ un paiement, ou la confiance.
 `paymentService.initiate` pointait vers `/payments/initiate`, route supprimée
 plus tôt dans la journée. Et `preparatorService.ready` gardait une branche
 « sans photo » que le serveur refuse désormais systématiquement.
+
+## Le point fournisseur (5 sept. 2026)
+
+**162 tests, 698 assertions.**
+
+Le préparateur se présente chez le partenaire, se sert, et ne paie rien —
+Axizán règle après. Cette dette grossissait depuis la première commande **sans
+que personne puisse la chiffrer** : chaque ligne enregistrait déjà `supplier_id`
+et `collected_at`, mais aucune interface ne savait lire cette donnée.
+
+C'est le seul manque qui pouvait arrêter l'activité. Un fournisseur qui doute
+d'être payé ferme le compte, et le préparateur se retrouve devant un étal qui
+refuse de servir.
+
+### Le tarif convenu, et pourquoi il ne suffit pas
+
+`supplier_prices` porte le prix négocié par fournisseur et par article. Mais ce
+n'est **pas** la vérité comptable : un prix se renégocie, et recalculer un point
+de la semaine dernière avec le tarif d'aujourd'hui ferait bouger un chiffre déjà
+réglé.
+
+Le prix est donc **estampillé sur la ligne au moment du retrait**, dans
+`actual_unit_price` — colonne qui existait déjà et attendait cet usage. C'est le
+produit **réellement pris** qui est tarifé : sur un remplacement, c'est
+l'article de substitution qui est sorti de l'étal.
+
+### Deux règles qui font qu'un point tient
+
+**Une ligne réglée ne revient jamais.** `order_items.settlement_id` rattache
+chaque ligne à son règlement, dans la même transaction que sa création. Le
+double paiement est empêché par le schéma, pas par la vigilance de celui qui
+fait les comptes.
+
+**On ne solde pas une dette dont une partie n'est pas chiffrée.** Un article
+sans tarif n'est pas compté pour zéro, il est signalé — et il bloque le
+règlement. Une dette sous-évaluée présentée comme complète est pire qu'une dette
+qu'on sait incomplète : on la règle, et l'écart ne se découvre jamais.
+
+Renseigner un tarif oublié **rechiffre automatiquement** les lignes déjà
+retirées et non réglées. Sans cela l'administrateur devrait deviner seul qu'il
+faut aussi recalculer. Les lignes déjà réglées, elles, ne bougent pas.
+
+### L'écran
+
+`/admin/fournisseurs` — la liste des étals à régler avec l'ancienneté de la
+dette, puis le relevé détaillé groupé par article, avec l'historique des
+règlements. Imprimable : le point se fait assis avec le fournisseur, papier en
+main.
+
+Le bouton de règlement dit ce qu'il fait — « les N lignes couvertes ne
+réapparaîtront plus jamais dans un point, cette action ne s'annule pas ».
+
+### Reste ouvert
+
+Les frais FedaPay (1,80 % par transaction) n'entrent toujours pas dans
+`Order::grossMargin()`. Avec le coût d'achat désormais connu, la marge réelle
+devient calculable — c'est le prochain chantier naturel.

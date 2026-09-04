@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { adminService } from '@/app/services';
 import { withRole } from '@/app/lib/auth-hoc';
 import { useToast } from '@/app/contexts/ToastContext';
@@ -428,6 +429,13 @@ function AdminPage() {
           <p className="mt-3 max-w-xl text-[15px] leading-7 text-cream-300">
             Rien ne part en préparation tant qu’un paiement n’est pas retrouvé sur le compte marchand.
           </p>
+
+          <Link
+            href="/admin/fournisseurs"
+            className="mt-6 inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-bold text-cream transition hover:bg-cream/10"
+          >
+            <Store size={16} /> Le point fournisseur
+          </Link>
 
           <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4">
             {[
