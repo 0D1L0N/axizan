@@ -10,12 +10,20 @@ import RemoteImage from '@/app/components/RemoteImage';
 import { AppliqueField, PagneBand } from '@/app/components/Motifs';
 import { RECIPE_MENUS } from '@/app/data/beninCatalog';
 import { productService } from '@/app/services';
-import { ArrowRight, Clock, Eye, MapPin, ShoppingBasket } from 'lucide-react';
+import { ArrowRight, MapPin } from 'lucide-react';
 
+/**
+ * Les trois engagements, sous le titre.
+ *
+ * Un ton pose et factuel : chacun avance une information verifiable — le delai
+ * et l'amplitude horaire, qui choisit, ce qu'il advient du stock. Les
+ * formulations parlees et les guillemets ironiques ont ete retires : ils
+ * faisaient dire a la marque autre chose que ce qu'elle vaut.
+ */
 const PROOF = [
-  [Clock, 'Livré dès 1 heure', 'Vous choisissez l’heure. Pas « dans la journée ».'],
-  [Eye, 'Qualité choisie', 'Étal par étal, par quelqu’un qui sait voir.'],
-  [ShoppingBasket, 'Acheté le jour même', 'Rien ne dort en entrepôt. Il n’y en a pas.'],
+  ['Livraison dès 1 heure', 'Vous fixez le créneau, à l’heure près, de 8 h à 19 h.'],
+  ['Sélection à la source', 'Chaque article choisi étal par étal, par un acheteur formé.'],
+  ['Achat du jour', 'Aucun entrepôt, aucun stock. Tout est acheté le jour de votre livraison.'],
 ];
 
 /**
@@ -119,12 +127,25 @@ export default function HomePage() {
                 </Link>
               </div>
 
-              <dl className="mt-12 grid gap-px overflow-hidden rounded-panel border border-cream/12 bg-cream/12 sm:grid-cols-3">
-                {PROOF.map(([Icon, title, text]) => (
-                  <div key={title} className="bg-forest-900/85 p-5 backdrop-blur">
-                    <Icon size={19} className="text-gold-500" />
-                    <dt className="mt-4 font-display text-lg font-semibold">{title}</dt>
-                    <dd className="mt-1.5 text-sm leading-6 text-cream/60">{text}</dd>
+              {/*
+                Un bandeau typographique, plus des cartes.
+
+                Trois boîtes identiques avec une icône chacune, c'est la mise
+                en page que produit n'importe quel gabarit : elle range
+                l'information sans la hiérarchiser, et l'icône ne dit rien que
+                le titre ne dise déjà. Ici ce sont des filets — un trait d'or
+                court en tête, une règle fine entre les colonnes — et c'est la
+                typographie qui porte. Moins d'éléments, plus de tenue.
+              */}
+              <dl className="mt-12 grid gap-y-8 border-t border-cream/15 pt-9 sm:grid-cols-3 sm:gap-x-10">
+                {PROOF.map(([title, text], index) => (
+                  <div
+                    key={title}
+                    className={index > 0 ? 'sm:border-l sm:border-cream/15 sm:pl-10' : undefined}
+                  >
+                    <span aria-hidden="true" className="block h-px w-8 bg-gold-500" />
+                    <dt className="mt-5 font-display text-lg font-semibold leading-snug">{title}</dt>
+                    <dd className="mt-2 text-sm leading-6 text-cream/60">{text}</dd>
                   </div>
                 ))}
               </dl>
