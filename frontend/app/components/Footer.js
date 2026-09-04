@@ -42,7 +42,7 @@ export default function Footer() {
             </div>
             <p className="mt-6 max-w-sm leading-8 text-cream/65">
               Nos acheteurs choisissent vos produits au marché le jour de la livraison, et vous les
-              recevez dans le créneau d’une heure que vous choisissez.
+              recevez dès 1 heure, au créneau que vous choisissez.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
               {ZONES.map((zone) => (
@@ -100,7 +100,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2.5">
                 <Clock size={16} className="shrink-0 text-gold-500" />
-                <span className="font-semibold">Créneaux d’1 h, 7 j/7</span>
+                <span className="font-semibold">Livré dès 1 h, 7 j/7</span>
               </li>
             </ul>
           </div>

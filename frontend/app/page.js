@@ -13,24 +13,30 @@ import { productService } from '@/app/services';
 import { ArrowRight, Clock, Eye, MapPin, ShoppingBasket } from 'lucide-react';
 
 const PROOF = [
-  [Clock, 'Créneaux d’1 h', 'Vous dites quand. Pas « dans la journée ».'],
+  [Clock, 'Livré dès 1 heure', 'Vous choisissez l’heure. Pas « dans la journée ».'],
   [Eye, 'Qualité choisie', 'Étal par étal, par quelqu’un qui sait voir.'],
   [ShoppingBasket, 'Acheté le jour même', 'Rien ne dort en entrepôt. Il n’y en a pas.'],
 ];
 
-/** Criteres de selection reels, cites tels quels : c'est ce qui rend la
- *  promesse de qualite credible. */
+/**
+ * Ce qu'un acheteur verifie, range PAR SENS.
+ *
+ * L'ordre n'est pas decoratif : bien acheter au marche est un geste sensoriel,
+ * et c'est exactement ce qui ne se delegue pas a une photo de catalogue. Le
+ * classement par sens dit la competence mieux que ne le ferait le mot
+ * « qualite » repete quatre fois.
+ */
 const CHECKS = [
-  ['Le poisson', 'L’œil clair et bombé, les ouïes bien rouges, la chair qui reprend sa forme sous le doigt.'],
-  ['L’huile rouge', 'Non coupée : la couleur, l’odeur et le dépôt au fond du bidon ne trompent pas.'],
-  ['Les tomates', 'Fermes, sans meurtrissure, choisies pour tenir jusqu’à la cuisson — pas pour le tas le moins cher.'],
-  ['L’igname', 'Le son creux à la percussion, l’absence de piqûres et de collet abîmé.'],
+  ['I', 'À l’œil', 'Le poisson', 'La pupille claire et bombée, les ouïes d’un rouge franc. Un œil terne a déjà trop attendu.'],
+  ['II', 'Au nez', 'L’huile rouge', 'Non coupée. L’odeur de palme, la couleur dense, le dépôt qui repose au fond du bidon.'],
+  ['III', 'À la main', 'Les tomates', 'Fermes sous le pouce, sans meurtrissure. Choisies pour tenir jusqu’à la cuisson.'],
+  ['IV', 'À l’oreille', 'L’igname', 'Le son creux à la percussion. Ni piqûre, ni collet abîmé.'],
 ];
 
 const STEPS = [
   ['01', 'Vous composez', 'Article par article, ou un panier-recette entier pour un plat précis.'],
-  ['02', 'On va au marché', 'Le jour de votre livraison. On choisit, on négocie, on pèse devant vous à l’écran.'],
-  ['03', 'Vous recevez', 'Dans le créneau d’une heure que vous avez choisi. Photo à la remise.'],
+  ['02', 'On va au marché', 'Le jour de votre livraison. On choisit chez nos fournisseurs partenaires, étal par étal.'],
+  ['03', 'Vous recevez', 'Dans le créneau que vous avez choisi. Photo du panier, photo à la remise.'],
 ];
 
 export default function HomePage() {
@@ -94,7 +100,8 @@ export default function HomePage() {
 
               <p className="mt-7 max-w-xl text-lg leading-8 text-cream/75">
                 Nos acheteurs choisissent vos produits au marché le jour de la livraison, avec l’œil de
-                quelqu’un qui sait reconnaître le bon. Vous recevez dans le créneau d’une heure que vous choisissez.
+                quelqu’un qui sait reconnaître le bon. Faites-vous livrer dès&nbsp;1&nbsp;heure, au
+                créneau que vous choisissez.
               </p>
 
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -177,33 +184,58 @@ export default function HomePage() {
         <section className="relative grain overflow-hidden bg-forest-950 py-20 text-cream">
           <AppliqueField opacity={0.6} />
           <div className="relative mx-auto max-w-7xl px-4">
-            <div className="max-w-3xl">
-              <p className="eyebrow text-gold-500">Nos préparateurs</p>
-              <h2 className="mt-4 font-display text-display-sm font-semibold">
-                Bien acheter au marché, c’est un métier.
-              </h2>
-              <p className="mt-6 text-lg leading-8 text-cream/70">
-                N’importe qui peut rapporter un poisson. Rapporter le bon, au bon prix, demande un œil
-                exercé. Nos préparateurs sont des acheteurs confirmés : ils savent quoi regarder, quoi
-                écarter, et à quel prix s’arrêter.
-              </p>
+            {/*
+              Deux colonnes : la thèse tient à gauche et reste lisible seule,
+              l'index des sens se déroule à droite. Sur téléphone elles
+              s'empilent — la thèse d'abord, ce qui est le bon ordre de lecture.
+            */}
+            <div className="grid gap-12 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20">
+              <div className="lg:sticky lg:top-16 lg:self-start">
+                <p className="eyebrow text-gold-500">Nos préparateurs</p>
+                <h2 className="mt-5 font-display text-display-sm font-semibold">
+                  Bien acheter,
+                  <span className="block text-gold-500">c’est un métier.</span>
+                </h2>
+                <p className="mt-7 text-lg leading-8 text-cream/70">
+                  N’importe qui peut rapporter un poisson. Rapporter le bon demande un œil exercé.
+                  Nos préparateurs sont des acheteurs confirmés&nbsp;: ils savent quoi regarder, et
+                  surtout quoi écarter.
+                </p>
+
+                <p className="mt-7 border-l-2 border-gold-500 pl-5 leading-8 text-cream/70">
+                  Si un article n’est pas au niveau, il n’entre pas dans votre panier. Vous avez dit
+                  à la commande s’il fallait le remplacer ou le retirer&nbsp;— c’est votre consigne
+                  qui tranche, pas la nôtre.
+                </p>
+              </div>
+
+              {/*
+                Un index, pas des cartes. Le chiffre romain et le sens portent
+                l'information — on n'achète pas avec les yeux seulement — et le
+                filet horizontal suffit à séparer : quatre boîtes identiques
+                auraient aplati la hiérarchie.
+              */}
+              <dl className="divide-y divide-cream/12 border-y border-cream/12">
+                {CHECKS.map(([numeral, sense, item, check]) => (
+                  <div
+                    key={item}
+                    className="group grid gap-x-8 gap-y-3 py-8 sm:grid-cols-[4.5rem_minmax(0,1fr)]"
+                  >
+                    <div className="flex items-baseline gap-3 sm:flex-col sm:gap-1.5">
+                      <span className="font-display text-2xl font-semibold text-gold-500/45 transition group-hover:text-gold-500">
+                        {numeral}
+                      </span>
+                      <span className="eyebrow text-cream/40">{sense}</span>
+                    </div>
+
+                    <div>
+                      <dt className="font-display text-3xl font-semibold leading-tight">{item}</dt>
+                      <dd className="mt-2.5 max-w-xl text-lg leading-8 text-cream/65">{check}</dd>
+                    </div>
+                  </div>
+                ))}
+              </dl>
             </div>
-
-            {/* Prouver la competence plutot que l'affirmer : on montre les
-                criteres reels de selection. */}
-            <dl className="mt-12 grid gap-px overflow-hidden rounded-panel border border-cream/12 bg-cream/12 md:grid-cols-2 xl:grid-cols-4">
-              {CHECKS.map(([item, check]) => (
-                <div key={item} className="bg-forest-950/85 p-6">
-                  <dt className="font-display text-2xl font-semibold text-gold-500">{item}</dt>
-                  <dd className="mt-2.5 leading-7 text-cream/65">{check}</dd>
-                </div>
-              ))}
-            </dl>
-
-            <p className="mt-8 max-w-3xl text-lg leading-8 text-cream/70">
-              Et si un article n’est pas au niveau, il n’entre pas dans votre panier : vous avez indiqué
-              à la commande s’il fallait le remplacer ou le retirer.
-            </p>
           </div>
         </section>
 
