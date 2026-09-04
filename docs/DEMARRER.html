@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Démarrer Axizán</title>
+<!--
+  Les polices viennent de Google, mais le document reste parfaitement lisible
+  sans connexion : les piles de repli (Georgia, police système, monospace)
+  sont déclarées partout, et display=swap affiche le texte immédiatement.
+  C'est la moindre des choses pour un guide qui parle de travailler hors ligne.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --ground: #FBF7EF;
+    --surface: #FFFFFF;
+    --surface-2: #F4EEE1;
+    --line: rgba(27, 23, 18, 0.11);
+    --line-strong: rgba(27, 23, 18, 0.22);
+    --ink: #1B1712;
+    --ink-2: #4A4137;
+    --ink-3: #7C7263;
+    --heading: #12372A;
+    --accent: #E09A00;
+    --accent-bright: #FFB000;
+    --ok: #1F6B52;
+    --ok-soft: rgba(31, 107, 82, 0.11);
+    --warn: #A97400;
+    --warn-soft: rgba(224, 154, 0, 0.15);
+    --bad: #C43C2F;
+    --bad-soft: rgba(196, 60, 47, 0.1);
+    /* Le terminal garde le même aspect dans les deux thèmes : un terminal
+       est un terminal. C'est le seul élément volontairement mono-thème. */
+    --term-bg: #07231A;
+    --term-ink: #E9E2D3;
+    --term-dim: rgba(233, 226, 211, 0.5);
+    --term-accent: #FFB000;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0A2419;
+      --surface: #0F3225;
+      --surface-2: #143C2D;
+      --line: rgba(242, 237, 226, 0.13);
+      --line-strong: rgba(242, 237, 226, 0.28);
+      --ink: #F2EDE2;
+      --ink-2: #CFC7B8;
+      --ink-3: #9C9385;
+      --heading: #F6F1E6;
+      --accent: #FFC748;
+      --accent-bright: #FFB000;
+      --ok: #5CC79A;
+      --ok-soft: rgba(92, 199, 154, 0.14);
+      --warn: #FFC748;
+      --warn-soft: rgba(255, 199, 72, 0.14);
+      --bad: #EC7A6C;
+      --bad-soft: rgba(236, 122, 108, 0.15);
+      --term-bg: #04170F;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0A2419;
+    --surface: #0F3225;
+    --surface-2: #143C2D;
+    --line: rgba(242, 237, 226, 0.13);
+    --line-strong: rgba(242, 237, 226, 0.28);
+    --ink: #F2EDE2;
+    --ink-2: #CFC7B8;
+    --ink-3: #9C9385;
+    --heading: #F6F1E6;
+    --accent: #FFC748;
+    --accent-bright: #FFB000;
+    --ok: #5CC79A;
+    --ok-soft: rgba(92, 199, 154, 0.14);
+    --warn: #FFC748;
+    --warn-soft: rgba(255, 199, 72, 0.14);
+    --bad: #EC7A6C;
+    --bad-soft: rgba(236, 122, 108, 0.15);
+    --term-bg: #04170F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    color: var(--heading);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  code, kbd, .mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  p code, li code, td code {
+    font-size: 0.87em;
+    background: var(--surface-2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2.5px solid var(--accent-bright);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  /* ---------- Bandeau ---------- */
+  .band { background: #12372A; color: #FBF7EF; border-bottom: 4px solid var(--accent-bright); }
+
+  .band-inner {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 42px 26px 34px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--accent-bright);
+    margin: 0;
+  }
+
+  .band h1 { color: #FBF7EF; font-size: clamp(2rem, 4.5vw, 2.9rem); line-height: 1.04; }
+  .band p { margin: 0; max-width: 62ch; color: rgba(251, 247, 239, 0.72); font-size: 1.03rem; }
+
+  /* ---------- Ossature ---------- */
+  main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 26px 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 46px;
+  }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+
+  section > header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-top: 34px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--line-strong);
+  }
+
+  section h2 { font-size: clamp(1.4rem, 2.6vw, 1.8rem); }
+
+  .step-no {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  p { margin: 0; max-width: 70ch; color: var(--ink-2); }
+  p strong, li strong { color: var(--ink); font-weight: 700; }
+
+  /* ---------- Terminal ---------- */
+  .term {
+    background: var(--term-bg);
+    color: var(--term-ink);
+    border-radius: 10px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13.5px;
+    line-height: 1.85;
+  }
+
+  .term .c { color: var(--term-dim); }
+  .term .p { color: var(--term-accent); user-select: none; }
+  .term b { color: #FFFFFF; font-weight: 500; }
+
+  /* ---------- Encadrés ---------- */
+  .note {
+    display: flex;
+    gap: 13px;
+    padding: 15px 18px;
+    border-radius: 9px;
+    border-left: 3px solid;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  .note p { color: inherit; max-width: none; }
+  .note.warn { background: var(--warn-soft); border-color: var(--warn); color: var(--ink); }
+  .note.bad { background: var(--bad-soft); border-color: var(--bad); color: var(--ink); }
+  .note .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    padding-top: 2px;
+  }
+  .note.warn .tag { color: var(--warn); }
+  .note.bad .tag { color: var(--bad); }
+
+  /* ---------- Tableaux ---------- */
+  .wrap { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom: 2px solid var(--line-strong);
+  }
+  td { color: var(--ink-2); }
+  td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* État hors-ligne : la forme porte l'information autant que la couleur. */
+  .state {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 700;
+    font-size: 13.5px;
+    white-space: nowrap;
+  }
+  .state::before {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex: none;
+  }
+  .state.ok { color: var(--ok); }
+  .state.ok::before { background: var(--ok); }
+  .state.deg { color: var(--warn); }
+  .state.deg::before { background: var(--warn); border-radius: 2px; }
+  .state.no { color: var(--bad); }
+  .state.no::before { background: transparent; border: 2px solid var(--bad); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px; color: var(--ink-2); }
+
+  /* ---------- Accès ---------- */
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 15px 17px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .tile .k { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .tile .v { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500; color: var(--ink); word-break: break-all; }
+  .tile .d { font-size: 13.5px; color: var(--ink-3); }
+
+  ul { margin: 0; padding-left: 20px; color: var(--ink-2); display: flex; flex-direction: column; gap: 7px; }
+  li { max-width: 68ch; }
+
+  footer {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 26px 70px;
+    color: var(--ink-3);
+    font-size: 14px;
+  }
+  footer p { color: var(--ink-3); }
+
+  @media (max-width: 620px) {
+    .band-inner, main, footer { padding-left: 17px; padding-right: 17px; }
+    .term { font-size: 12.5px; }
+  }
+</style>
+
+</head>
+<body>
+
+<div class="band">
+  <div class="band-inner">
+    <p class="eyebrow">Axizán · aide-mémoire</p>
+    <h1>Démarrer l’application, avec ou sans internet</h1>
+    <p>
+      Tout tient dans Docker. Une commande lance les sept services, et le projet
+      reste entièrement utilisable hors connexion — à quelques détails près, listés
+      plus bas.
+    </p>
+  </div>
+</div>
+
+<main>
+
+  <!-- ============ 1 ============ -->
+  <section>
+    <header><span class="step-no">01</span><h2>Lancer l’application</h2></header>
+
+    <p>Depuis le dossier du projet. Docker Desktop doit tourner.</p>
+
+    <div class="term"><span class="p">PS&gt;</span> <b>cd C:\Users\B4DM4N\source\repos\axizan</b>
+<span class="p">PS&gt;</span> <b>docker compose up -d</b></div>
+
+    <p>
+      Sept services démarrent&nbsp;: <code>postgres</code>, <code>redis</code>,
+      <code>laravel</code>, <code>queue</code>, <code>scheduler</code>,
+      <code>nextjs</code> et <code>mailpit</code>.
+    </p>
+
+    <div class="note warn">
+      <span class="tag">Patience</span>
+      <p>
+        Le front met <strong>une à deux minutes</strong> avant de répondre : Next.js
+        recompile au premier démarrage. <code>docker compose ps</code> affichera
+        « Up » bien avant que la page ne s’ouvre — c’est normal, laissez-le finir.
+      </p>
+    </div>
+
+    <p>Pour vérifier que tout est debout&nbsp;:</p>
+
+    <div class="term"><span class="p">PS&gt;</span> <b>docker compose ps</b>
+<span class="c">NAME               STATUS</span>
+axizan-laravel     Up
+axizan-mailpit     Up (healthy)
+axizan-nextjs      Up
+axizan-postgres    Up (healthy)
+axizan-queue       Up
+axizan-redis       Up (healthy)
+axizan-scheduler   Up</div>
+  </section>
+
+  <!-- ============ 2 ============ -->
+  <section>
+    <header><span class="step-no">02</span><h2>Où aller</h2></header>
+
+    <div class="grid">
+      <div class="tile">
+        <span class="k">Application</span>
+        <span class="v">http://localhost:3000</span>
+        <span class="d">Le site, et l’API sous /api</span>
+      </div>
+      <div class="tile">
+        <span class="k">Depuis un téléphone</span>
+        <span class="v">http://192.168.100.2:3000</span>
+        <span class="d">Même Wi-Fi, sans internet</span>
+      </div>
+      <div class="tile">
+        <span class="k">Mailpit</span>
+        <span class="v">http://localhost:8025</span>
+        <span class="d">Tous les mails envoyés</span>
+      </div>
+    </div>
+
+    <p>
+      Les quatre comptes de démonstration partagent le mot de passe
+      <code>password123</code>, en minuscules. Chacun atterrit directement sur son
+      espace&nbsp;: <code>client@test.com</code>, <code>preparateur@test.com</code>,
+      <code>livreur@test.com</code>, <code>admin@test.com</code>.
+    </p>
+
+    <div class="note warn">
+      <span class="tag">Multi-rôles</span>
+      <p>
+        Pour être connecté à plusieurs rôles en même temps, il faut des
+        <strong>profils de navigateur séparés</strong> — le jeton vit dans le
+        <code>localStorage</code>, partagé par tous les onglets d’un même site.
+        Le mode privé ne suffit pas : toutes ses fenêtres partagent une session.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 3 ============ -->
+  <section>
+    <header><span class="step-no">03</span><h2>Ouvrir au public (avec internet)</h2></header>
+
+    <p>
+      Cloudflared crée une adresse publique temporaire pointant sur votre machine.
+      Il n’est <strong>pas dans le PATH</strong> — donnez le chemin complet.
+    </p>
+
+    <div class="term"><span class="p">PS&gt;</span> <b>&amp; "C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://localhost:3000</b>
+
+<span class="c">  Your quick Tunnel has been created! Visit it at:</span>
+<span class="c">  https://</span><b>xxxx-xxxx-xxxx.trycloudflare.com</b></div>
+
+    <p>
+      Une seule adresse suffit pour le site <em>et</em> l’API : les appels sont
+      réécrits en interne vers le conteneur Laravel. Laissez la fenêtre ouverte —
+      la fermer coupe le tunnel. <kbd>Ctrl</kbd>+<kbd>C</kbd> l’arrête proprement ;
+      sinon <code>Get-Process cloudflared | Stop-Process</code>.
+    </p>
+
+    <div class="note bad">
+      <span class="tag">Attention</span>
+      <p>
+        Quiconque a l’adresse peut se connecter en <code>admin@test.com</code> avec
+        le mot de passe de démonstration, et valider des paiements.
+        <strong>Ne partagez ce lien qu’à des gens de confiance, et fermez le tunnel
+        après.</strong> L’adresse change à chaque redémarrage.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 4 ============ -->
+  <section>
+    <header><span class="step-no">04</span><h2>Sans connexion internet</h2></header>
+
+    <p>
+      L’essentiel fonctionne : les images Docker, les 463 paquets npm, les
+      dépendances PHP et les polices sont déjà sur votre disque. Voici ce qui
+      change réellement.
+    </p>
+
+    <div class="legend">
+      <span class="state ok">fonctionne</span>
+      <span class="state deg">dégradé</span>
+      <span class="state no">indisponible</span>
+    </div>
+
+    <div class="wrap">
+      <table>
+        <thead>
+          <tr><th>Ce que vous faites</th><th>Hors ligne</th><th>Pourquoi</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Lancer la pile</td>
+            <td><span class="state ok">fonctionne</span></td>
+            <td>Toutes les images Docker sont en cache local.</td>
+          </tr>
+          <tr>
+            <td>Modifier le code</td>
+            <td><span class="state ok">fonctionne</span></td>
+            <td>Le rechargement à chaud est local.</td>
+          </tr>
+          <tr>
+            <td>Lancer les tests</td>
+            <td><span class="state ok">fonctionne</span></td>
+            <td>Base SQLite en mémoire, rien à télécharger.</td>
+          </tr>
+          <tr>
+            <td>Montrer sur le réseau local</td>
+            <td><span class="state ok">fonctionne</span></td>
+            <td>Un Wi-Fi suffit, même sans accès internet.</td>
+          </tr>
+          <tr>
+            <td>Photos du catalogue</td>
+            <td><span class="state deg">dégradé</span></td>
+            <td>22 produits sur 49 et les 8 catégories pointent vers Unsplash. Les vignettes « Photo à venir » prennent le relais — la mise en page tient.</td>
+          </tr>
+          <tr>
+            <td>Paiement FedaPay</td>
+            <td><span class="state no">indisponible</span></td>
+            <td>Le module vient d’un CDN. Sans réseau, on retombe sur le mode déclaratif — c’est le régime actuel de toute façon.</td>
+          </tr>
+          <tr>
+            <td>Tunnel public</td>
+            <td><span class="state no">indisponible</span></td>
+            <td>Par définition.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note bad">
+      <span class="tag">Le piège</span>
+      <p>
+        <strong>Ne supprimez ni <code>.next</code> ni les volumes Docker pendant
+        que vous êtes hors ligne.</strong> Les polices Fraunces et Plus Jakarta Sans
+        sont téléchargées <em>à la construction</em> puis mises en cache dans
+        <code>.next</code>. Purgé sans réseau, le projet ne se reconstruit plus.
+        Même chose pour <code>node_modules</code> et <code>vendor</code> : les
+        recréer demande <code>npm install</code> et <code>composer install</code>.
+      </p>
+    </div>
+
+    <p>
+      Si vous prévoyez de longues périodes hors ligne, je peux rapatrier les polices
+      dans le dépôt (<code>next/font/local</code>) et remplacer les photos Unsplash
+      par des fichiers locaux. Le projet deviendrait alors totalement autonome.
+    </p>
+  </section>
+
+  <!-- ============ 5 ============ -->
+  <section>
+    <header><span class="step-no">05</span><h2>Quand ça coince</h2></header>
+
+    <div class="wrap">
+      <table>
+        <thead>
+          <tr><th>Symptôme</th><th>Cause et remède</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Le site ne répond pas</td>
+            <td>
+              Next compile encore. <code>docker compose logs nextjs --tail=20</code> —
+              attendez la ligne <code>✓ Ready</code>.
+            </td>
+          </tr>
+          <tr>
+            <td>Erreur <code>MODULE_NOT_FOUND</code></td>
+            <td>
+              Un <code>npm run build</code> a laissé une construction de production que
+              le mode développement ne sait pas relire. Recréez le conteneur&nbsp;:
+              <code>docker compose rm -svf nextjs</code> puis
+              <code>docker compose up -d nextjs</code>.
+            </td>
+          </tr>
+          <tr>
+            <td>L’API renvoie 500</td>
+            <td>
+              Souvent le lien de stockage manquant après un clone&nbsp;:
+              <code>docker compose exec laravel php artisan storage:link</code>.
+            </td>
+          </tr>
+          <tr>
+            <td>Tout est <code>Exited (255)</code></td>
+            <td>
+              Docker Desktop a redémarré. <code>docker compose up -d</code> suffit,
+              les données sont intactes.
+            </td>
+          </tr>
+          <tr>
+            <td>Erreur 429 à la connexion</td>
+            <td>
+              Le garde-fou anti force brute : 10 tentatives par minute.
+              Attendez une minute.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Pour repartir d’une base propre — <strong>efface toutes les commandes</strong> :</p>
+
+    <div class="term"><span class="p">PS&gt;</span> <b>docker compose exec laravel php artisan migrate:fresh --seed</b></div>
+  </section>
+
+  <!-- ============ 6 ============ -->
+  <section>
+    <header><span class="step-no">06</span><h2>Commandes utiles</h2></header>
+
+    <div class="term"><span class="c"># Lancer la suite de tests</span>
+<span class="p">PS&gt;</span> <b>docker compose exec laravel ./vendor/bin/phpunit</b>
+
+<span class="c"># Suivre les journaux du serveur</span>
+<span class="p">PS&gt;</span> <b>docker compose logs laravel -f</b>
+
+<span class="c"># Voir les SMS (aucun agrégateur branché : ils s'écrivent dans le journal)</span>
+<span class="p">PS&gt;</span> <b>docker compose logs laravel | Select-String "SMS"</b>
+
+<span class="c"># Tout arrêter, sans rien perdre</span>
+<span class="p">PS&gt;</span> <b>docker compose stop</b></div>
+
+    <div class="note warn">
+      <span class="tag">Jamais</span>
+      <p>
+        <code>docker compose down -v</code> supprime les volumes, donc
+        <strong>la base de données</strong>. <code>stop</code> suffit pour éteindre.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    Le suivi d’avancement du projet vit dans <code>CHANTIERS.md</code>, à la racine
+    du dépôt. Les décisions produit et les points restés ouverts y sont datés.
+  </p>
+</footer>
+
+</body>
+</html>

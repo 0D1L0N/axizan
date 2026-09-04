@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
+use App\Models\Depot;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Supplier;
@@ -280,6 +282,117 @@ class PreparatorMarketTest extends TestCase
             'order_id' => $order->id,
             'event' => 'items.removed',
         ]);
+    }
+
+    public function test_a_released_order_returns_to_the_market_pool(): void
+    {
+        [$zone] = $this->createZoneWithSlot();
+        [$market, $supplier] = $this->createMarketFor($zone);
+        $order = $this->paidOrder($this->createClient(), $zone, [$this->createProduct(), $this->createProduct()]);
+
+        $preparateur = $this->createPreparateurFor($market);
+        Sanctum::actingAs($preparateur, ['*']);
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/accept")->assertOk();
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/start")->assertOk();
+
+        $item = $order->items()->first();
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/items/{$item->id}", [
+            'collection_status' => 'collected',
+            'supplier_id' => $supplier->id,
+        ])->assertOk();
+
+        $response = $this->patchJson("/api/v1/preparateur/orders/{$order->id}/release", [
+            'reason' => 'Moto en panne',
+        ])->assertOk();
+
+        $order->refresh();
+        $this->assertSame('pending', $order->status->value);
+        $this->assertNull($order->preparateur_id);
+        $this->assertSame(1, $response->json('meta.items_reset'));
+
+        // Les lignes repartent vierges : ce qui a ete recupere est chez le
+        // precedent, le laisser coche ferait croire le panier a moitie pret.
+        foreach ($order->items()->get() as $line) {
+            $this->assertSame('pending', $line->collection_status);
+            $this->assertNull($line->supplier_id);
+        }
+
+        $this->assertDatabaseHas('order_events', [
+            'order_id' => $order->id,
+            'event' => 'order.released',
+            'reason' => 'Moto en panne',
+        ]);
+    }
+
+    public function test_releasing_requires_a_reason(): void
+    {
+        [$zone] = $this->createZoneWithSlot();
+        [$market] = $this->createMarketFor($zone);
+        $order = $this->paidOrder($this->createClient(), $zone, [$this->createProduct()]);
+
+        Sanctum::actingAs($this->createPreparateurFor($market), ['*']);
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/accept")->assertOk();
+
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/release")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('reason');
+    }
+
+    public function test_a_released_order_can_be_taken_by_another_preparateur(): void
+    {
+        [$zone] = $this->createZoneWithSlot();
+        [$market] = $this->createMarketFor($zone);
+        $order = $this->paidOrder($this->createClient(), $zone, [$this->createProduct()]);
+
+        Sanctum::actingAs($this->createPreparateurFor($market), ['*']);
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/accept")->assertOk();
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/release", ['reason' => 'Malade'])->assertOk();
+
+        $second = $this->createPreparateurFor($market);
+        Sanctum::actingAs($second, ['*']);
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/accept")->assertOk();
+
+        $this->assertSame($second->id, $order->fresh()->preparateur_id);
+    }
+
+    public function test_suppliers_are_suggested_from_the_product_category(): void
+    {
+        [$zone] = $this->createZoneWithSlot();
+        [$market, $supplier] = $this->createMarketFor($zone);
+
+        // La specialite de l'etal porte le nom d'une categorie produit :
+        // c'est ce rapprochement qui evite un choix par ligne.
+        $category = Category::create(['name' => $supplier->speciality]);
+        $product = $this->createProduct();
+        $product->update(['category_id' => $category->id]);
+
+        $order = $this->paidOrder($this->createClient(), $zone, [$product]);
+
+        Sanctum::actingAs($this->createPreparateurFor($market), ['*']);
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/accept")->assertOk();
+
+        $item = $this->getJson('/api/v1/preparateur/orders/mine')->assertOk()->json('data.0.items.0');
+
+        $this->assertSame($supplier->id, $item['suggested_supplier_id']);
+    }
+
+    public function test_the_depot_is_given_to_the_preparateur(): void
+    {
+        [$zone] = $this->createZoneWithSlot();
+        [$market] = $this->createMarketFor($zone);
+        $depot = Depot::create([
+            'name' => 'Dépôt Cotonou',
+            'address' => 'Rue 12.34',
+            'city' => 'Cotonou',
+        ]);
+        $market->update(['depot_id' => $depot->id]);
+
+        Sanctum::actingAs($this->createPreparateurFor($market), ['*']);
+
+        // Il doit savoir ou deposer avant de quitter le marche.
+        $this->getJson('/api/v1/preparateur/orders/mine')
+            ->assertOk()
+            ->assertJsonPath('meta.depot.name', 'Dépôt Cotonou');
     }
 
     public function test_another_preparateur_cannot_touch_your_items(): void

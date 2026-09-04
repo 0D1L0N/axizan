@@ -16,6 +16,19 @@ const LINKS = [
   ['Paniers-recettes', '/menus'],
 ];
 
+/**
+ * Espace de travail de chaque rôle opérationnel.
+ *
+ * Un préparateur ou un livreur n'a rien à faire dans le catalogue ni dans un
+ * panier : il travaille. Lui montrer la boutique brouille son écran et
+ * l'invite à des actions qui n'ont aucun sens pour lui.
+ */
+const STAFF_HOME = {
+  preparateur: ['Mes commandes', '/preparateur'],
+  livreur: ['Mes livraisons', '/livreur'],
+  admin: ['Administration', '/admin'],
+};
+
 export default function Header() {
   const { user, logout } = useAuth();
   const { items } = useCart();
@@ -32,7 +45,15 @@ export default function Header() {
     router.push('/');
   };
 
-  const navLinks = user ? [...LINKS, ['Commandes', '/orders']] : LINKS;
+  // Le staff ne voit que son espace de travail ; la boutique reste au client.
+  const isStaff = Boolean(user?.role && user.role !== 'client');
+  const staffHome = isStaff ? STAFF_HOME[user.role] : null;
+
+  const navLinks = isStaff
+    ? (staffHome ? [staffHome] : [])
+    : user
+      ? [...LINKS, ['Commandes', '/orders']]
+      : LINKS;
 
   // Changer de page ferme le panneau : sans cela, on navigue derriere un menu
   // reste ouvert.
@@ -76,48 +97,54 @@ export default function Header() {
     <header className="sticky top-0 z-50 border-b border-ink-900/8 bg-cream/85 backdrop-blur-xl">
       <ProfileReminder />
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="flex items-center" aria-label="Axizán, accueil">
+        {/* Le staff atterrit sur son espace, pas sur la boutique. */}
+        <Link
+          href={staffHome ? staffHome[1] : '/'}
+          className="flex items-center"
+          aria-label="Axizán, accueil"
+        >
           <Logo size={46} display />
         </Link>
 
-        <nav className="hidden items-center gap-1 rounded-full border border-ink-900/8 bg-white/70 p-1 text-sm font-semibold text-ink-700 shadow-card md:flex">
-          {navLinks.map(([label, href]) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                className={`rounded-full px-4 py-2 transition ${
-                  active ? 'bg-forest-800 text-cream' : 'hover:bg-cream-200'
-                }`}
-              >
-                {label}
-              </Link>
-            );
-          })}
-          {user?.role && user.role !== 'client' && (
-            <Link href={`/${user.role}`} className="rounded-full px-4 py-2 capitalize transition hover:bg-cream-200">
-              Espace {user.role}
-            </Link>
-          )}
-        </nav>
+        {navLinks.length > 0 && (
+          <nav className="hidden items-center gap-1 rounded-full border border-ink-900/8 bg-white/70 p-1 text-sm font-semibold text-ink-700 shadow-card md:flex">
+            {navLinks.map(([label, href]) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`rounded-full px-4 py-2 transition ${
+                    active ? 'bg-forest-800 text-cream' : 'hover:bg-cream-200'
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
         <div className="flex items-center gap-2">
           <NotificationBell />
-          <Link
-            href="/cart"
-            className="relative inline-flex h-11 items-center gap-2 rounded-full bg-gold-500 px-4 text-sm font-bold text-forest-950 shadow-glow transition hover:bg-gold-400"
-            title="Voir le panier"
-          >
-            <ShoppingBasket size={18} />
-            <span className="hidden sm:inline">Panier</span>
-            {items.length > 0 && (
-              <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-clay-500 px-1 text-xs font-bold text-white ring-2 ring-cream">
-                {items.length}
-              </span>
-            )}
-          </Link>
+
+          {/* Pas de panier pour le staff : il travaille, il n'achète pas. */}
+          {!isStaff && (
+            <Link
+              href="/cart"
+              className="relative inline-flex h-11 items-center gap-2 rounded-full bg-gold-500 px-4 text-sm font-bold text-forest-950 shadow-glow transition hover:bg-gold-400"
+              title="Voir le panier"
+            >
+              <ShoppingBasket size={18} />
+              <span className="hidden sm:inline">Panier</span>
+              {items.length > 0 && (
+                <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-clay-500 px-1 text-xs font-bold text-white ring-2 ring-cream">
+                  {items.length}
+                </span>
+              )}
+            </Link>
+          )}
 
           {user ? (
             <>
@@ -203,14 +230,6 @@ export default function Header() {
                 );
               })}
 
-              {user?.role && user.role !== 'client' && (
-                <Link
-                  href={`/${user.role}`}
-                  className="rounded-card px-4 py-3.5 text-lg font-bold capitalize text-ink-900 hover:bg-cream-200"
-                >
-                  Espace {user.role}
-                </Link>
-              )}
 
               <div className="mt-3 border-t border-ink-900/10 pt-3">
                 {user ? (

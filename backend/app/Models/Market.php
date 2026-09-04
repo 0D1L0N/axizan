@@ -9,9 +9,15 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Market extends Model
 {
-    protected $fillable = ['name', 'city', 'is_active'];
+    protected $fillable = ['name', 'city', 'depot_id', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];
+
+    /** Depot ou les preparateurs de ce marche deposent les paniers. */
+    public function depot()
+    {
+        return $this->belongsTo(Depot::class);
+    }
 
     public function suppliers()
     {
@@ -24,9 +30,16 @@ class Market extends Model
         return $this->belongsToMany(DeliveryZone::class, 'delivery_zone_market');
     }
 
+    /**
+     * Preparateurs rattaches a ce marche.
+     *
+     * Le filtre sur le role n'est pas decoratif : `market_id` vit sur `users`,
+     * donc sans lui la relation ramenerait n'importe quel compte rattache au
+     * marche un jour, et le compteur affiche a l'administration mentirait.
+     */
     public function preparateurs()
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(User::class)->where('role', \App\Enums\UserRole::PREPARATEUR);
     }
 
     public function scopeActive($query)

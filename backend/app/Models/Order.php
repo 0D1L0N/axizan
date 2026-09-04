@@ -70,8 +70,6 @@ class Order extends Model
         'tax',
         'discount_amount',
         'total',
-        'promo_code_id',
-        'promo_discount',
         'payment_method',
         'payment_status',
         'payment_transaction_id',
@@ -82,6 +80,7 @@ class Order extends Model
         'accepted_at',
         'preparing_started_at',
         'ready_at',
+        'prep_photo_url',
         'delivery_started_at',
         'delivered_at',
         'completed_at',
@@ -94,7 +93,6 @@ class Order extends Model
         'tax' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
-        'promo_discount' => 'decimal:2',
         'delivery_date' => 'date',
         'estimated_delivery_time' => 'datetime',
         'actual_delivery_time' => 'datetime',
@@ -130,11 +128,6 @@ class Order extends Model
     public function deliverySlot()
     {
         return $this->belongsTo(DeliverySlot::class);
-    }
-
-    public function promo()
-    {
-        return $this->belongsTo(Promotion::class, 'promo_code_id');
     }
 
     public function items()
@@ -184,16 +177,6 @@ class Order extends Model
     public function payment()
     {
         return $this->hasOne(Payment::class);
-    }
-
-    public function invoice()
-    {
-        return $this->hasOne(Invoice::class);
-    }
-
-    public function reviews()
-    {
-        return $this->hasMany(Review::class);
     }
 
     // Scopes

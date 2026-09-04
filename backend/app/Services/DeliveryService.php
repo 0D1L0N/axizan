@@ -64,10 +64,18 @@ class DeliveryService
     /**
      * Marquer comme en transit
      */
+    /**
+     * Le livreur a recupere le panier au depot et part chez le client.
+     *
+     * Un seul geste pour deux faits : il prend le panier et s'en va dans le
+     * meme mouvement. Deux boutons pour un seul moment n'apporteraient rien
+     * sur le terrain, et pickup_time reste renseigne pour le depot.
+     */
     public function startDelivery(Delivery $delivery): Delivery
     {
         $delivery->update([
             'status' => \App\Enums\DeliveryStatus::IN_TRANSIT,
+            'pickup_time' => $delivery->pickup_time ?? now(),
         ]);
 
         // Mettre à jour le statut de la commande

@@ -24,9 +24,17 @@ class DeliveryController extends Controller
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
+        // Le depot est indispensable : c'est la que le livreur va chercher le
+        // panier. Sans lui, il sait qu'une commande l'attend mais pas ou.
         $orders = Order::where('status', OrderStatus::READY)
-            ->with('client', 'deliveryAddress', 'items')
-            ->latest()
+            ->with(
+                'client:id,name,phone',
+                'deliveryAddress',
+                'items.product:id,name,price_type',
+                'preparateur.market.depot',
+                'deliverySlot'
+            )
+            ->orderBy('ready_at')
             ->paginate($request->get('limit', 20));
 
         return response()->json([
@@ -53,7 +61,13 @@ class DeliveryController extends Controller
 
         $deliveries = $user->deliveries()
             ->whereIn('status', ['assigned', 'picked_up', 'in_transit'])
-            ->with('order.client', 'order.deliveryAddress')
+            ->with(
+                'order.client:id,name,phone',
+                'order.deliveryAddress',
+                'order.items.product:id,name,price_type',
+                'order.preparateur.market.depot',
+                'order.deliverySlot'
+            )
             ->latest()
             ->get();
 
@@ -195,12 +209,11 @@ class DeliveryController extends Controller
                 'total_deliveries_today' => $today->count(),
                 'successful_deliveries' => $today->where('status', 'delivered')->count(),
                 'failed_deliveries' => $today->where('status', 'failed')->count(),
-                'total_earnings_today' => $today->sum(function ($d) {
-                    return $d->order->delivery_fee ?? 0;
-                }),
-                'average_rating' => $user->receivedReviews()
-                    ->whereNotNull('rating')
-                    ->avg('rating') ?? 0,
+                // Frais de livraison encaissés par Axizán sur ses courses du
+                // jour — pas sa rémunération, qui relève du contrat livreur.
+                'delivery_fees_today' => \App\Support\Money::round(
+                    $today->sum(fn ($d) => (float) ($d->order->delivery_fee ?? 0))
+                ),
             ],
         ]);
     }

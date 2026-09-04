@@ -203,3 +203,113 @@ routage par canal impossible et faussaient la boîte de réception. Types
 **Avant la mise en ligne :** choisir un agrégateur SMS béninois et chiffrer le
 coût par segment. À trois SMS par commande, c'est une ligne de coût variable qui
 pèse directement sur la marge.
+
+## Revue de fond en comble (4 sept. 2026)
+
+**133 tests, 504 assertions.** Dix points relevés à la relecture du projet
+entier, traités dans l'ordre décidé par le porteur.
+
+### 1–5 · Le stock n'est plus un verrou, le code mort est parti
+
+Axizán ne détient aucun stock : les articles sont retirés chez des
+fournisseurs partenaires **au moment de la commande**. Refuser 50 kg d'ignames
+parce qu'une colonne affiche 45 n'avait aucun sens quand le fournisseur en a
+des sacs.
+
+- `stock_quantity` est désormais **un signal indicatif, jamais une limite** ;
+  rien ne le décrémente. Le seul verrou est `is_available`, que
+  l'administration bascule quand un produit disparaît du marché national.
+  Verrouillé par `StockIsOnlyASignalTest`.
+- **Supprimés** : `promotions`, `promotion_usages`, `reviews`, `menus`,
+  `menu_items`, `invoices` — tables vides depuis le premier jour, sans aucune
+  interface, mais `applyPromotion()` s'exécutait à chaque commande. Du schéma
+  qui ment coûte plus cher qu'il ne rapporte : le prochain développeur croit
+  qu'un système de promotions existe et cherche où il est branché.
+  Migration `..._000022`, volontairement non réversible.
+- Avec eux : `PaymentService::initiateMobileMoneyPayment()`, `generateInvoice()`,
+  `callMobileMoneyAPI()`, la route `POST /payments/initiate`, les types de
+  notification jamais émis (`review_request`, `promo_available`, `new_product`,
+  `admin_alert`, `system_notification`), et le **code promo du panier** — un
+  champ qui affichait « −500 XOF » sans qu'aucun code n'existe.
+- `Market::preparateurs()` filtre maintenant sur le rôle : `market_id` vit sur
+  `users`, la relation ramenait n'importe quel compte rattaché.
+- `DeliveryController::stats()` renvoyait un `average_rating` qui appelait une
+  relation supprimée (erreur fatale), et appelait « gains du livreur » les
+  frais de livraison encaissés par Axizán. Corrigé et renommé.
+
+### 6 · Écran admin réparé et repris au système de design
+
+Il était **cassé** : `validatePayment(orderId)` partait sans référence alors que
+l'API l'exige depuis la traçabilité des paiements — 422 systématique.
+
+- Le formulaire s'ouvre sur place, pré-rempli de la **référence déclarée par le
+  client**, avec la consigne : retrouver la transaction sur le compte marchand,
+  vérifier le montant, puis recopier. La validation n'est pas un bouton, c'est
+  une décision.
+- La file **remonte en tête les commandes dont le client a déjà déclaré une
+  référence** : quelqu'un attend derrière, et la référence dit quoi chercher.
+- Création de compte staff avec **sélection du marché**, obligatoire pour un
+  préparateur : sans marché le compte est mort-né, il ouvre son écran, ne voit
+  aucune commande, et personne ne comprend pourquoi. Nouvel endpoint
+  `GET /admin/markets`, avec l'effectif par marché.
+
+### 7 · Livreur prévenu quand un panier arrive au dépôt
+
+Le préparateur dépose et repart : personne ne se passe le panier en main
+propre. Jusqu'ici le panier attendait qu'un livreur pense à rafraîchir.
+
+- `NotificationType::BASKET_AT_DEPOT`, diffusé à **tous les livreurs actifs** à
+  `markReady()`, avec le nom du dépôt et le quartier. In-app seulement : un SMS
+  par livreur et par panier coûterait le prix de la course, et le premier
+  arrivé prend de toute façon.
+- L'écran livreur **relit le dépôt toutes les 45 s**, uniquement sur l'écran de
+  liste et onglet au premier plan, et signale les nouveaux paniers par leur
+  numéro. Revenir sur l'onglet déclenche une relecture immédiate.
+
+### 8 · Résistance réseau du préparateur (le vrai risque terrain)
+
+Chaque tap sur « Pris » / « Absent » attendait un aller-retour réseau **et se
+perdait en silence en cas d'échec** : le préparateur croyait avoir pointé un
+article qui restait « en attente » côté serveur, et ne l'apprenait qu'au moment
+de déposer, à l'autre bout du marché.
+
+- `usePickQueue` (`app/lib/pickQueue.js`) : le tap est acté immédiatement à
+  l'écran, écrit sur le téléphone, puis rejoué jusqu'à ce qu'il passe. Fermer
+  l'écran ne le perd pas. Envois **séquentiels et dans l'ordre** — deux
+  modifications du même article doivent arriver dans le bon ordre.
+- **Distinction réseau / refus** : un 4xx est définitif (fournisseur hors
+  marché, remplacement interdit) et remonte au préparateur pour correction ; une
+  coupure est réessayée en silence, avec paliers 1 s → 30 s. Confondre les deux,
+  c'est soit boucler à l'infini sur une erreur de saisie, soit jeter un pointage
+  à cause d'un trou de couverture.
+- Retour du réseau (`online`) : reprise immédiate, sans attendre le palier.
+- « J'ai déposé » est **bloqué tant que la file n'est pas vide** — sinon le
+  serveur refuse pour « articles en attente » alors que tout est pointé sur le
+  téléphone.
+- Bandeau d'état : « hors réseau, vos pointages sont gardés » / « N pointages en
+  cours d'envoi ».
+
+### 9 · Les dix pages restantes passées au système de design
+
+`login`, `register`, `cart`, `orders`, `orders/[id]`, `menus`, `products/[id]`,
+`CartItem`, `OrderCard`, `OrderStatusTimeline` utilisaient encore `bg-primary`,
+`text-gray-*`, `rounded-lg` et des hexadécimaux en dur — dont un dégradé
+`to-secondary` qui ne pointait sur aucune couleur définie.
+
+L'alias de compatibilité `primary` a été **retiré de la configuration** : plus
+aucune page ne l'utilise, et le laisser rouvrirait la porte à deux noms pour
+une même couleur.
+
+Au passage, le panier n'annonce plus de total inventé : les frais de livraison
+dépendent de la zone de l'adresse et la taxe se calcule dessus. Ces montants ne
+sont connus qu'au checkout, et le total qui engage est celui que le serveur
+renvoie.
+
+### Reste à faire avant une mise en ligne
+
+- Numéro et e-mail de contact réels (`app/lib/contact.js` : `+229 00 00 00 00`).
+- Numéros marchands réels (`PAY_MTN_NUMBER`, etc.) et clés FedaPay
+  (`FEDAPAY_ENABLED=false` aujourd'hui).
+- 27 des 49 produits sans photo.
+- `orders.payment_method` a encore `'cash'` par défaut en migration, ce qui
+  contredit la décision « pas de paiement à la livraison ».

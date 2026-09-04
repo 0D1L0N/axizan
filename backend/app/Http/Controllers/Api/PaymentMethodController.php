@@ -29,14 +29,27 @@ class PaymentMethodController extends Controller
             ])
             ->values();
 
+        $online = app(\App\Services\FedapayService::class)->isEnabled();
+
         return response()->json([
             'success' => true,
             'data' => $methods,
             'meta' => [
                 'validation_delay' => config('payments.validation_delay'),
-                // Dit franchement au client ce qui se passe : pas de
-                // prelevement automatique, un envoi puis une verification.
-                'flow' => 'declarative',
+                /*
+                 * Deux régimes, et le client doit savoir lequel s'applique :
+                 *
+                 *  - « online »      : Fedapay confirme le paiement, la
+                 *                      commande part sans intervention humaine.
+                 *  - « declarative » : repli sans API — le client envoie
+                 *                      l'argent, déclare sa référence, un
+                 *                      administrateur vérifie et valide.
+                 */
+                'flow' => $online ? 'online' : 'declarative',
+                'fedapay' => $online ? [
+                    'public_key' => config('payments.fedapay.public_key'),
+                    'sandbox' => (bool) config('payments.fedapay.sandbox'),
+                ] : null,
             ],
         ]);
     }

@@ -21,7 +21,35 @@
 
 return [
 
+    /*
+    |--------------------------------------------------------------------------
+    | FedaPay
+    |--------------------------------------------------------------------------
+    |
+    | Agregateur beninois : MTN MoMo, Moov Money, cartes. Quand il est actif,
+    | le paiement est confirme par l'OPERATEUR, pas par un administrateur.
+    |
+    | Regle absolue : le retour du widget cote navigateur n'est jamais une
+    | preuve. Il donne un identifiant de transaction, que le serveur va
+    | verifier aupres de FedaPay — sinon n'importe qui pourrait declarer avoir
+    | paye en appelant notre API directement.
+    |
+    */
+    'fedapay' => [
+        'enabled' => env('FEDAPAY_ENABLED', false),
+        // Seule la cle publique sort de l'API : elle est faite pour le
+        // navigateur. La cle secrete ne quitte JAMAIS le serveur.
+        'public_key' => env('FEDAPAY_PUBLIC_KEY'),
+        'secret_key' => env('FEDAPAY_SECRET_KEY'),
+        // Le secret du WEBHOOK est distinct de la cle API : c'est la cause
+        // numero un des erreurs de signature.
+        'webhook_secret' => env('FEDAPAY_WEBHOOK_SECRET'),
+        // Le bac a sable utilise des numeros de test : aucun argent ne bouge.
+        'sandbox' => env('FEDAPAY_SANDBOX', true),
+    ],
+
     // Delai indicatif affiche au client entre son envoi et la validation.
+    // Ne concerne que le repli manuel : avec FedaPay, c'est immediat.
     'validation_delay' => env('PAYMENT_VALIDATION_DELAY', 'moins de 30 minutes en journée'),
 
     'methods' => [

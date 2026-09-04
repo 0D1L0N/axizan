@@ -66,8 +66,8 @@ export default function ProductDetailPage() {
         <Header />
         <main className="mx-auto max-w-5xl px-4 py-10">
           <div className="rounded-[30px] bg-white p-10 text-center shadow-sm">
-            <p className="font-bold text-gray-700">{error || 'Produit introuvable'}</p>
-            <Link href="/products" className="mt-4 inline-block font-black text-[#12372A] hover:underline">
+            <p className="font-bold text-ink-700">{error || 'Produit introuvable'}</p>
+            <Link href="/products" className="mt-4 inline-block font-black text-forest-800 hover:underline">
               ← Retour au catalogue
             </Link>
           </div>
@@ -82,17 +82,17 @@ export default function ProductDetailPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FBF7EF]">
+      <main className="min-h-screen bg-cream">
         <div className="mx-auto max-w-6xl px-4 py-8">
           <button
             onClick={() => router.back()}
-            className="mb-6 inline-flex items-center gap-2 font-black text-[#12372A] hover:underline"
+            className="mb-6 inline-flex items-center gap-2 font-black text-forest-800 hover:underline"
           >
             <ArrowLeft size={18} /> Retour
           </button>
 
           <div className="grid gap-8 overflow-hidden rounded-[36px] border border-black/5 bg-white p-6 shadow-sm lg:grid-cols-2 lg:p-8">
-            <div className="relative overflow-hidden rounded-[28px] bg-gray-100">
+            <div className="relative overflow-hidden rounded-[28px] bg-cream-100">
               <ProductImage
                 product={product}
                 size="full"
@@ -100,7 +100,7 @@ export default function ProductDetailPage() {
                 className="h-full min-h-[320px] max-h-[460px] w-full object-cover"
               />
               {product.is_bestseller && (
-                <div className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-[#FFB000] px-3 py-1 text-xs font-black text-[#1C140D] shadow-sm">
+                <div className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-gold-500 px-3 py-1 text-xs font-black text-forest-900 shadow-sm">
                   <Sparkles size={13} /> Populaire
                 </div>
               )}
@@ -112,41 +112,41 @@ export default function ProductDetailPage() {
                   {product.category.icon_emoji} {product.category.name}
                 </p>
               )}
-              <h1 className="mt-3 text-4xl font-black tracking-tight text-[#12372A]">{product.name}</h1>
-              <p className="mt-4 leading-7 text-gray-600">{product.description}</p>
+              <h1 className="mt-3 text-4xl font-black tracking-tight text-forest-800">{product.name}</h1>
+              <p className="mt-4 leading-7 text-ink-500">{product.description}</p>
 
-              <div className="mt-6 border-t border-gray-100 pt-6">
-                <p className="text-4xl font-black text-[#12372A]">{formatPrice(price)}</p>
-                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+              <div className="mt-6 border-t border-cream-200 pt-6">
+                <p className="text-4xl font-black text-forest-800">{formatPrice(price)}</p>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-ink-300">
                   {unitLabel(product.price_type)}
                 </p>
               </div>
 
               <div className="mt-6">
-                <label className="mb-2 block text-sm font-black text-gray-700">
+                <label className="mb-2 block text-sm font-black text-ink-700">
                   Quantité {product.price_type === 'kg' ? '(par pas de 0,5 kg)' : ''}
                 </label>
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center rounded-full border border-gray-300 bg-white">
+                  <div className="flex items-center rounded-full border border-cream-300 bg-white">
                     <button
                       onClick={() => setQuantity((q) => normalizeQuantity(Math.max(minQuantity(product.price_type), q - step), product.price_type))}
-                      className="grid h-12 w-12 place-items-center rounded-full hover:bg-gray-100"
+                      className="grid h-12 w-12 place-items-center rounded-full hover:bg-cream-100"
                       aria-label="Diminuer"
                     >
                       <Minus size={17} />
                     </button>
-                    <span className="min-w-28 text-center font-black text-[#12372A]">
+                    <span className="min-w-28 text-center font-black text-forest-800">
                       {formatQuantity(quantity, product.price_type)}
                     </span>
                     <button
                       onClick={() => setQuantity((q) => normalizeQuantity(q + step, product.price_type))}
-                      className="grid h-12 w-12 place-items-center rounded-full hover:bg-gray-100"
+                      className="grid h-12 w-12 place-items-center rounded-full hover:bg-cream-100"
                       aria-label="Augmenter"
                     >
                       <Plus size={17} />
                     </button>
                   </div>
-                  <p className="text-lg font-black text-gray-700">= {formatPrice(price * quantity)}</p>
+                  <p className="text-lg font-black text-ink-700">= {formatPrice(price * quantity)}</p>
                 </div>
               </div>
 
@@ -154,14 +154,14 @@ export default function ProductDetailPage() {
                 <button
                   onClick={handleAdd}
                   disabled={!product.is_available}
-                  className="inline-flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-[#12372A] px-6 font-black text-white shadow-sm transition hover:bg-[#0f2f24] disabled:cursor-not-allowed disabled:bg-gray-400"
+                  className="inline-flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-forest-800 px-6 font-black text-white shadow-sm transition hover:bg-forest-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ShoppingBasket size={19} />
                   {product.is_available ? `Ajouter ${formatQuantity(quantity, product.price_type)}` : 'Indisponible'}
                 </button>
                 <Link
                   href="/cart"
-                  className="inline-flex h-14 items-center justify-center rounded-full border border-gray-300 px-6 font-black text-[#12372A] hover:bg-gray-50"
+                  className="inline-flex h-14 items-center justify-center rounded-full border border-cream-300 px-6 font-black text-forest-800 hover:bg-cream-100"
                 >
                   Voir le panier
                 </Link>
@@ -173,7 +173,7 @@ export default function ProductDetailPage() {
                 </p>
               )}
 
-              <p className="mt-6 text-sm leading-6 text-gray-500">
+              <p className="mt-6 text-sm leading-6 text-ink-500">
                 Nous achetons vos articles au marché le jour de la livraison. Si un produit est
                 introuvable, vous pourrez indiquer au moment de la commande s’il faut le remplacer
                 par un équivalent ou le retirer.

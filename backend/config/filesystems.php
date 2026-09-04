@@ -41,7 +41,11 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            // Adresse relative par defaut : les photos sont servies sous le
+            // meme domaine que le front (reecriture Next), donc les liens
+            // restent valides depuis localhost, le reseau local ou un tunnel
+            // public — sans jamais figer une machine dans la base.
+            'url' => env('STORAGE_URL', '/storage'),
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

@@ -6,112 +6,92 @@ import CartItem from '@/app/components/CartItem';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import Link from 'next/link';
+import { formatPrice } from '@/app/lib/units';
+import { ArrowRight, ShoppingBasket, Trash2 } from 'lucide-react';
 
 export default function CartPage() {
-  const { items, subtotal, total, promoCode, setPromoCode, setPromoDiscount, clearCart } = useCart();
+  const { items, subtotal, clearCart } = useCart();
   const router = useRouter();
 
-  const handleCheckout = () => {
-    if (items.length === 0) {
-      alert('Votre panier est vide');
-      return;
-    }
-
-    router.push('/checkout');
-  };
+  const count = items.length;
 
   return (
     <>
       <Header />
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">🛒 Mon Panier</h1>
+      <main className="min-h-screen bg-cream">
+        <div className="mx-auto max-w-6xl px-4 py-10">
+          <p className="eyebrow text-clay-500">Votre panier</p>
+          <h1 className="mt-2 font-display text-display-sm text-forest-800">
+            {count === 0 ? 'Rien dedans, pour l’instant' : `${count} article${count > 1 ? 's' : ''} choisi${count > 1 ? 's' : ''}`}
+          </h1>
 
-        {items.length === 0 ? (
-          <div className="bg-gray-100 rounded-lg p-8 text-center">
-            <p className="text-gray-600 mb-4">Votre panier est vide</p>
-            <Link href="/" className="text-primary font-semibold hover:underline">
-              ← Retour au catalogue
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Items */}
-            <div className="lg:col-span-2">
-              <div className="space-y-4">
+          {count === 0 ? (
+            <div className="mt-8 rounded-panel border border-dashed border-cream-300 bg-white p-12 text-center">
+              <ShoppingBasket size={30} className="mx-auto text-ink-300" />
+              <p className="mt-4 leading-7 text-ink-500">
+                Ajoutez des produits au catalogue, puis choisissez un créneau de livraison.
+              </p>
+              <Link
+                href="/products"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-forest-800 px-6 py-3 font-bold text-cream transition hover:bg-forest-700"
+              >
+                Parcourir le catalogue <ArrowRight size={17} />
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="space-y-3">
                 {items.map((item) => (
                   <CartItem key={item.id} item={item} />
                 ))}
-              </div>
-            </div>
-
-            {/* Résumé */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow p-6 sticky top-20">
-                <h2 className="text-xl font-bold mb-6">📋 Résumé</h2>
-
-                {/* Promo */}
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold mb-2">Code Promo</label>
-                  <input
-                    type="text"
-                    placeholder="BIENVENUE20"
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary"
-                    value={promoCode || ''}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                  />
-                  <button className="w-full mt-2 bg-gray-600 text-white py-2 rounded hover:bg-gray-700">
-                    Appliquer
-                  </button>
-                </div>
-
-                {/* Calcul */}
-                <div className="space-y-2 text-sm mb-6 border-t pt-4">
-                  <div className="flex justify-between">
-                    <span>Sous-total:</span>
-                    <span className="font-semibold">{subtotal.toFixed(0)} XOF</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Taxes (10%):</span>
-                    <span className="font-semibold">{(subtotal * 0.1).toFixed(0)} XOF</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Livraison:</span>
-                    <span className="font-semibold">À déterminer</span>
-                  </div>
-                  {promoCode && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Réduction:</span>
-                      <span className="font-semibold">-500 XOF</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total:</span>
-                    <span className="text-primary">{(total + subtotal * 0.1).toFixed(0)} XOF</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <button
-                  onClick={handleCheckout}
-                  className="w-full bg-primary text-white font-semibold py-3 rounded-lg hover:bg-red-700"
-                >
-                  Procéder à la livraison
-                </button>
 
                 <button
                   onClick={() => clearCart()}
-                  className="w-full mt-2 border border-gray-300 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-100"
+                  className="inline-flex items-center gap-2 pt-2 text-sm font-semibold text-ink-500 transition hover:text-clay-600"
                 >
-                  Vider le panier
+                  <Trash2 size={15} /> Vider le panier
                 </button>
-
-                <Link href="/" className="block text-center mt-4 text-primary font-semibold hover:underline">
-                  Continuer vos achats →
-                </Link>
               </div>
+
+              <aside className="lg:sticky lg:top-6 lg:self-start">
+                <div className="rounded-panel border border-cream-300 bg-white p-6 shadow-card">
+                  <h2 className="font-display text-xl font-semibold text-ink-900">Récapitulatif</h2>
+
+                  <div className="mt-5 flex items-baseline justify-between">
+                    <span className="text-ink-500">Total des articles</span>
+                    <span className="font-display text-2xl font-semibold tabular-nums text-forest-800">
+                      {formatPrice(subtotal)}
+                    </span>
+                  </div>
+
+                  {/*
+                    Ni frais de livraison ni taxe ici : ils dépendent de la zone
+                    de l'adresse, qu'on choisit à l'étape suivante. Annoncer un
+                    total maintenant reviendrait à l'inventer.
+                  */}
+                  <p className="mt-3 rounded-xl bg-cream-100 px-4 py-3 text-sm leading-6 text-ink-500">
+                    Les frais de livraison et la taxe s’ajoutent une fois votre adresse et votre créneau
+                    choisis.
+                  </p>
+
+                  <button
+                    onClick={() => router.push('/checkout')}
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gold-500 px-6 py-4 font-bold text-forest-900 shadow-glow transition hover:bg-gold-400"
+                  >
+                    Procéder au paiement <ArrowRight size={18} />
+                  </button>
+
+                  <Link
+                    href="/products"
+                    className="mt-4 block text-center text-sm font-semibold text-forest-800 hover:underline"
+                  >
+                    Continuer mes achats
+                  </Link>
+                </div>
+              </aside>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
       <Footer />
     </>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Services\PaymentService;
+use App\Models\Market;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -17,12 +18,35 @@ class AdminController extends Controller
     {}
 
     /**
-     * Commandes en attente de validation de paiement
+     * Marchés de retrait, pour rattacher un préparateur à la création.
+     */
+    public function markets()
+    {
+        return response()->json([
+            'success' => true,
+            'data' => Market::where('is_active', true)
+                ->withCount('preparateurs')
+                ->orderBy('city')
+                ->orderBy('name')
+                ->get(['id', 'name', 'city']),
+        ]);
+    }
+
+    /**
+     * Commandes en attente de validation de paiement.
+     *
+     * Celles dont le client a déjà déclaré une référence remontent en tête :
+     * quelqu'un attend derrière, et la référence donne à l'administrateur
+     * exactement quoi chercher sur le compte marchand.
      */
     public function pendingPayments(Request $request)
     {
         $orders = Order::where('payment_status', 'pending')
-            ->with('client', 'payment')
+            ->with('client:id,name,phone', 'payment')
+            ->orderByRaw(
+                'CASE WHEN EXISTS (SELECT 1 FROM payments WHERE payments.order_id = orders.id'
+                .' AND payments.payer_declared_reference IS NOT NULL) THEN 0 ELSE 1 END'
+            )
             ->latest()
             ->paginate($request->get('limit', 20));
 
@@ -94,6 +118,12 @@ class AdminController extends Controller
             'phone' => 'required|string|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|in:preparateur,livreur',
+            // Un préparateur sans marché ne voit aucune commande et ne peut
+            // rien faire : le compte serait créé mort-né, sans que personne
+            // comprenne pourquoi. On l'exige donc à la création.
+            'market_id' => 'required_if:role,preparateur|nullable|exists:markets,id',
+        ], [
+            'market_id.required_if' => 'Rattachez ce préparateur à un marché : sans cela, il ne verra aucune commande.',
         ]);
 
         if ($validator->fails()) {
@@ -107,11 +137,12 @@ class AdminController extends Controller
             'password' => Hash::make($request->password),
             'role' => $request->role,
             'status' => 'active',
+            'market_id' => $request->role === 'preparateur' ? $request->market_id : null,
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $user,
+            'data' => $user->load('market:id,name,city'),
             'message' => 'Compte créé',
         ], 201);
     }

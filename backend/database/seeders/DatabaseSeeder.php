@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\DeliverySlot;
 use App\Models\DeliveryZone;
+use App\Models\Depot;
 use App\Models\Market;
 use App\Models\Supplier;
 use App\Models\User;
@@ -62,10 +63,35 @@ class DatabaseSeeder extends Seeder
             ],
         ];
 
+        // Un dépôt par ville : le préparateur y rapporte le panier, le livreur
+        // vient l'y chercher. C'est le point de remise entre les deux rôles.
+        $depots = [
+            'Cotonou' => [
+                'name' => 'Dépôt Cotonou',
+                'address' => 'Rue 12.34, Akpakpa',
+                'landmark' => 'Face à la station Oryx',
+                'phone' => '+22961000010',
+            ],
+            'Porto-Novo' => [
+                'name' => 'Dépôt Porto-Novo',
+                'address' => 'Avenue Liberté, Djègan-Daho',
+                'landmark' => 'À côté du marché Ouando',
+                'phone' => '+22961000011',
+            ],
+        ];
+
         foreach ($markets as $data) {
+            $depotData = $depots[$data['city']] ?? null;
+            $depot = $depotData
+                ? Depot::updateOrCreate(
+                    ['name' => $depotData['name']],
+                    $depotData + ['city' => $data['city'], 'is_active' => true]
+                )
+                : null;
+
             $market = Market::updateOrCreate(
                 ['name' => $data['name']],
-                ['city' => $data['city'], 'is_active' => true]
+                ['city' => $data['city'], 'depot_id' => $depot?->id, 'is_active' => true]
             );
 
             $zoneIds = DeliveryZone::whereIn('name', $data['zones'])->pluck('id');
@@ -93,7 +119,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($accounts as $account) {
-            User::firstOrCreate(
+            $user = User::firstOrCreate(
                 ['email' => $account['email']],
                 [
                     'name' => $account['name'],
@@ -110,6 +136,13 @@ class DatabaseSeeder extends Seeder
                         : null,
                 ]
             );
+
+            // firstOrCreate n'applique rien aux comptes déjà existants : un
+            // rattachement ajouté après coup ne serait jamais posé, et le
+            // préparateur resterait sans marché sans qu'on comprenne pourquoi.
+            if (isset($account['market']) && ! $user->market_id) {
+                $user->update(['market_id' => Market::where('name', $account['market'])->value('id')]);
+            }
         }
     }
 

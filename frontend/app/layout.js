@@ -26,7 +26,10 @@ const sans = Plus_Jakarta_Sans({
 export const metadata = {
   title: 'Axizán — On fait votre marché, vous cuisinez.',
   description:
-    'Nos acheteurs choisissent vos produits frais au marché à Cotonou, Abomey-Calavi et Porto-Novo, et vous les recevez dans le créneau d’une heure de votre choix.',
+    // « frais » promettait une cueillette du jour que le marché ne garantit
+    // pas toujours. Ce qu'on tient vraiment, c'est le choix chez des
+    // partenaires connus, le retrait du jour et la livraison à l'heure dite.
+    'Nos acheteurs choisissent vos produits chez nos fournisseurs partenaires à Cotonou, Abomey-Calavi et Porto-Novo, et vous les recevez dans le créneau d’une heure de votre choix.',
   manifest: '/manifest.json',
   icons: {
     icon: [

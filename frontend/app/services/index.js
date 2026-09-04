@@ -41,6 +41,13 @@ export const orderService = {
   reorder: (id) => api.post(`/orders/${id}/reorder`),
   /** Le client declare avoir paye. Ne valide rien : un admin verifie ensuite. */
   declarePayment: (id, data) => api.post(`/orders/${id}/declare-payment`, data),
+  /**
+   * Transmet l'identifiant rendu par le module FedaPay. Le serveur interroge
+   * l'operateur avant de croire quoi que ce soit — ce n'est pas une
+   * declaration, c'est une demande de verification.
+   */
+  confirmPayment: (id, transactionId) =>
+    api.post(`/orders/${id}/confirm-payment`, { transaction_id: transactionId }),
   updateOrderStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
 };
 
@@ -87,10 +94,44 @@ export const preparatorService = {
   getMine: () => api.get('/preparateur/orders/mine'),
   accept: (orderId) => api.patch(`/preparateur/orders/${orderId}/accept`),
   start: (orderId, notes) => api.patch(`/preparateur/orders/${orderId}/start`, { notes }),
-  ready: (orderId, notes) => api.patch(`/preparateur/orders/${orderId}/ready`, { notes }),
+  /**
+   * Marquer déposée au dépôt, avec une photo du panier.
+   *
+   * PATCH n'accepte pas de fichier en multipart : on passe par POST avec
+   * `_method`, la convention Laravel pour les envois de formulaire.
+   */
+  ready: (orderId, { notes, photo } = {}) => {
+    if (!photo) {
+      return api.patch(`/preparateur/orders/${orderId}/ready`, { notes });
+    }
+
+    const form = new FormData();
+    form.append('_method', 'PATCH');
+    form.append('photo', photo);
+    if (notes) form.append('notes', notes);
+
+    return api.post(`/preparateur/orders/${orderId}/ready`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  /** Fournisseurs partenaires du marché de rattachement. */
+  getSuppliers: () => api.get('/preparateur/suppliers'),
+  /**
+   * Rendre une commande qu'on ne peut pas honorer : elle retourne au pool du
+   * marché et les lignes déjà pointées sont remises à zéro.
+   */
+  release: (orderId, reason) => api.patch(`/preparateur/orders/${orderId}/release`, { reason }),
+  /**
+   * Enregistre le sort d'une ligne : récupérée, remplacée ou retirée.
+   * Aucun prix : le préparateur ne paie pas, il retire en compte.
+   */
+  updateItem: (orderId, itemId, data) =>
+    api.patch(`/preparateur/orders/${orderId}/items/${itemId}`, data),
 };
 
 export const adminService = {
+  /** Marchés actifs, pour rattacher un préparateur à la création. */
+  getMarkets: () => api.get('/admin/markets'),
   getPendingPayments: (params) => api.get('/admin/payments/pending', { params }),
   /** `reference_number` est obligatoire : sans référence, le paiement n'est pas traçable. */
   validatePayment: (orderId, proof) => api.post(`/admin/orders/${orderId}/validate-payment`, proof),

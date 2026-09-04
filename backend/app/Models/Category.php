@@ -27,11 +27,6 @@ class Category extends Model
         return $this->hasMany(Product::class);
     }
 
-    public function menus()
-    {
-        return $this->hasMany(Menu::class);
-    }
-
     // Scopes
     public function scopeActive($query)
     {

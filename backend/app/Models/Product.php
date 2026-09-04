@@ -44,11 +44,6 @@ class Product extends Model
         return $this->belongsTo(User::class, 'created_by_id');
     }
 
-    public function menuItems()
-    {
-        return $this->hasMany(MenuItem::class);
-    }
-
     public function orderItems()
     {
         return $this->hasMany(OrderItem::class);

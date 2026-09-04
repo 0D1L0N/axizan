@@ -82,16 +82,6 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
-    public function reviews()
-    {
-        return $this->hasMany(Review::class, 'reviewer_id');
-    }
-
-    public function receivedReviews()
-    {
-        return $this->hasMany(Review::class, 'reviewee_id');
-    }
-
     public function payments()
     {
         return $this->hasMany(Payment::class);
@@ -132,13 +122,6 @@ class User extends Authenticatable
     public function isAdmin()
     {
         return $this->role === UserRole::ADMIN;
-    }
-
-    public function getRatingAttribute()
-    {
-        return $this->receivedReviews()
-            ->whereNotNull('rating')
-            ->avg('rating') ?? 0;
     }
 
     public function getTotalOrdersAttribute()

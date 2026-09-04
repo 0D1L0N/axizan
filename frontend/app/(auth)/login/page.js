@@ -4,6 +4,23 @@ import { useState } from 'react';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Header from '@/app/components/Header';
+import Footer from '@/app/components/Footer';
+import { Loader2 } from 'lucide-react';
+
+/**
+ * Ou chaque role atterrit apres connexion. Le client va a la boutique, le
+ * personnel a son poste de travail.
+ */
+const HOME_BY_ROLE = {
+  client: '/',
+  preparateur: '/preparateur',
+  livreur: '/livreur',
+  admin: '/admin',
+};
+
+const FIELD =
+  'mt-2 w-full rounded-card border border-ink-900/12 bg-white px-4 py-3 font-medium text-ink-900 outline-none transition placeholder:text-ink-300 focus:border-forest-600';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,69 +37,91 @@ export default function LoginPage() {
     setError('');
 
     try {
-      await login(email, password);
-      router.push('/');
+      const user = await login(email, password);
+      // Le rôle vient du compte, pas d'un choix à la connexion : chacun
+      // atterrit directement sur son espace de travail.
+      router.push(HOME_BY_ROLE[user?.role] ?? '/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Erreur lors de la connexion');
+      setError(err.response?.data?.message || 'E-mail ou mot de passe incorrect.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-2">🍲 Axizán</h1>
-        <p className="text-center text-gray-600 mb-8">Connectez-vous pour continuer</p>
+    <>
+      <Header />
+      <main className="min-h-screen bg-cream">
+        <div className="mx-auto max-w-lg px-4 py-16">
+          <div className="rounded-panel border border-ink-900/8 bg-white p-7 shadow-card md:p-9">
+            <p className="eyebrow text-clay-500">Votre compte</p>
+            <h1 className="mt-3 font-display text-3xl font-semibold text-forest-800">
+              Content de vous revoir.
+            </h1>
+            <p className="mt-3 leading-7 text-ink-500">
+              Retrouvez vos paniers, vos adresses et le suivi de vos commandes.
+            </p>
 
-        {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+            <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+              {error && (
+                <p className="rounded-card bg-clay-200 px-4 py-3 font-semibold text-clay-600">{error}</p>
+              )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="votre@email.com"
-            />
-          </div>
+              <label className="block">
+                <span className="block text-sm font-bold text-ink-700">Adresse e-mail</span>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="vous@exemple.bj"
+                  className={FIELD}
+                />
+              </label>
 
-          <div>
-            <div className="mb-2 flex items-baseline justify-between gap-3">
-              <label className="block text-sm font-semibold text-gray-700">Mot de passe</label>
-              <Link href="/mot-de-passe-oublie" className="text-sm font-semibold text-primary hover:underline">
-                Oublié&nbsp;?
+              <label className="block">
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-bold text-ink-700">Mot de passe</span>
+                  <Link
+                    href="/mot-de-passe-oublie"
+                    className="text-sm font-bold text-forest-800 hover:underline"
+                  >
+                    Oublié&nbsp;?
+                  </Link>
+                </span>
+                <input
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className={FIELD}
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-forest-800 px-6 py-4 font-bold text-cream transition hover:bg-forest-700 disabled:opacity-60"
+              >
+                {loading && <Loader2 size={17} className="animate-spin" />}
+                {loading ? 'Connexion…' : 'Se connecter'}
+              </button>
+            </form>
+
+            <p className="mt-7 border-t border-cream-200 pt-6 text-center text-ink-500">
+              Pas encore de compte&nbsp;?{' '}
+              <Link href="/register" className="font-bold text-forest-800 hover:underline">
+                Créer un compte
               </Link>
-            </div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="••••••••"
-            />
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary text-white font-semibold py-3 rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition"
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
-        </form>
-
-        <p className="text-center text-gray-600 mt-6">
-          Pas encore inscrit?{' '}
-          <Link href="/register" className="text-primary font-semibold hover:underline">
-            S'inscrire
-          </Link>
-        </p>
-      </div>
-    </div>
+        </div>
+      </main>
+      <Footer />
+    </>
   );
 }

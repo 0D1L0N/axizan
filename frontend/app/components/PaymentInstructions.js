@@ -5,15 +5,38 @@ import { useToast } from '@/app/contexts/ToastContext';
 import { orderService } from '@/app/services';
 import { formatPrice } from '@/app/lib/units';
 import { Check, Copy, Loader2, ShieldCheck } from 'lucide-react';
+import FedapayButton from '@/app/components/FedapayButton';
 
 /**
- * Marche a suivre pour payer une commande en attente.
- *
- * Le client paie APRES avoir commande — il lui faut le numero de commande
- * comme motif. Sans ce bloc, il repartait de la page de confirmation sans
- * savoir ou envoyer l'argent.
+ * Paiement en ligne : le client règle dans le module FedaPay, l'opérateur
+ * confirme, et la commande part sans intervention humaine.
  */
-export default function PaymentInstructions({ order, methods, delay, onDeclared }) {
+function OnlinePayment({ order, fedapay, onSettled }) {
+  return (
+    <section className="overflow-hidden rounded-panel border-2 border-gold-500/50 bg-white shadow-card">
+      <div className="border-b border-ink-900/8 bg-gold-500/10 px-6 py-4">
+        <p className="eyebrow text-clay-500">Paiement en attente</p>
+        <h2 className="mt-2 font-display text-2xl font-semibold text-forest-800">
+          Réglez pour lancer vos courses
+        </h2>
+        <p className="mt-1.5 text-sm leading-6 text-ink-500">
+          Nous n’allons chercher vos articles qu’une fois le paiement confirmé par l’opérateur.
+        </p>
+      </div>
+
+      <div className="p-6">
+        <FedapayButton
+          order={order}
+          publicKey={fedapay.public_key}
+          sandbox={fedapay.sandbox}
+          onSettled={onSettled}
+        />
+      </div>
+    </section>
+  );
+}
+
+export default function PaymentInstructions({ order, methods, delay, fedapay, onDeclared }) {
   const toast = useToast();
   const payment = order.payment;
 
@@ -26,6 +49,21 @@ export default function PaymentInstructions({ order, methods, delay, onDeclared 
   const available = methods.filter((m) => m.enabled);
   const chosen = available.find((m) => m.code === provider) || available[0];
   const declared = Boolean(payment?.payer_declared_reference);
+
+  /*
+   * Deux régimes, exclusifs. Afficher les deux embrouillerait : on ne montre
+   * que celui qui s'applique.
+   *
+   *  - FedaPay actif : l'opérateur confirme, rien à saisir.
+   *  - Sinon : mode déclaratif — le client envoie l'argent au numéro marchand
+   *    et déclare sa référence, qu'un administrateur vérifie.
+   *
+   * Le test vient APRÈS les hooks : les appeler conditionnellement casserait
+   * l'ordre attendu par React d'un rendu à l'autre.
+   */
+  if (fedapay?.public_key) {
+    return <OnlinePayment order={order} fedapay={fedapay} onSettled={onDeclared} />;
+  }
 
   const copy = async (text, key) => {
     try {

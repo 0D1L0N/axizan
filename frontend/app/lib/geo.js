@@ -103,3 +103,47 @@ export function parseCoordinates(url) {
   }
   return null;
 }
+
+/**
+ * Distance a vol d'oiseau, en kilometres (formule de haversine).
+ *
+ * A vol d'oiseau, donc toujours optimiste face aux rues de Cotonou : on
+ * l'annonce comme un ordre de grandeur, jamais comme un temps de trajet.
+ */
+export function distanceKm(lat1, lon1, lat2, lon2) {
+  if ([lat1, lon1, lat2, lon2].some((v) => v == null || Number.isNaN(Number(v)))) return null;
+
+  const R = 6371;
+  const toRad = (deg) => (Number(deg) * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function formatDistance(km) {
+  if (km == null) return null;
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace('.', ',')} km`;
+}
+
+/**
+ * Fraicheur d'une position. Une position d'il y a vingt minutes n'est plus
+ * une position : le dire evite au client d'attendre devant sa porte.
+ */
+export function positionAge(isoDate) {
+  if (!isoDate) return { label: 'Position inconnue', stale: true };
+
+  const minutes = Math.floor((Date.now() - new Date(isoDate).getTime()) / 60000);
+
+  if (minutes < 1) return { label: "à l'instant", stale: false };
+  if (minutes < 3) return { label: `il y a ${minutes} min`, stale: false };
+  if (minutes < 15) return { label: `il y a ${minutes} min`, stale: false };
+  if (minutes < 60) return { label: `il y a ${minutes} min`, stale: true };
+
+  const hours = Math.floor(minutes / 60);
+  return { label: `il y a ${hours} h`, stale: true };
+}

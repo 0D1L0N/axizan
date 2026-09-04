@@ -68,6 +68,38 @@ class NotificationService
     }
 
     /**
+     * Un panier vient d'arriver au depot : prevenir les livreurs.
+     *
+     * Le preparateur ne remet rien en main propre — il depose, puis repart
+     * chercher la commande suivante. Sans ce signal, le panier attend qu'un
+     * livreur pense a rafraichir son ecran, et des courses fraiches vieillissent
+     * au depot pendant que des livreurs disponibles ne savent rien.
+     *
+     * La diffusion vise tous les livreurs actifs : le premier qui accepte
+     * prend la course, exactement comme sur le terrain. In-app seulement
+     * (voir config/notifications.php) — un SMS par livreur et par panier
+     * couterait le prix de la course.
+     */
+    public function sendBasketAtDepotNotification(Order $order): void
+    {
+        $depot = $order->preparateur?->market?->depot;
+        $where = $depot ? " au dépôt {$depot->name}" : ' au dépôt';
+
+        User::query()
+            ->where('role', \App\Enums\UserRole::LIVREUR)
+            ->where('status', 'active')
+            ->each(function (User $livreur) use ($order, $where) {
+                $this->notify(
+                    $livreur,
+                    NotificationType::BASKET_AT_DEPOT,
+                    'Panier disponible',
+                    "Commande {$order->order_number} prête{$where} — quartier {$order->deliveryAddress?->quartier}.",
+                    ['order_id' => $order->id]
+                );
+            });
+    }
+
+    /**
      * Notification livraison assignée
      */
     public function sendDeliveryAssignedNotification(Order $order, User $livreur)
@@ -114,20 +146,6 @@ class NotificationService
             "💳 Paiement confirmé",
             "Votre paiement de {$order->total} XOF a été confirmé",
             ['order_id' => $order->id, 'amount' => $order->total]
-        );
-    }
-
-    /**
-     * Demande d'avis
-     */
-    public function sendReviewRequestNotification(Order $order)
-    {
-        $this->notify(
-            $order->client,
-            NotificationType::REVIEW_REQUEST,
-            "⭐ Donnez votre avis",
-            "Comment s'est passée votre livraison? Aidez-nous à nous améliorer!",
-            ['order_id' => $order->id]
         );
     }
 

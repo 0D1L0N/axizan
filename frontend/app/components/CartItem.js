@@ -4,15 +4,15 @@ import { useCart } from '@/app/contexts/CartContext';
 import { quantityStep, unitShort, formatQuantity, formatPrice } from '@/app/lib/units';
 import { PLACEHOLDER_IMAGE } from '@/app/lib/images';
 import RemoteImage from '@/app/components/RemoteImage';
+import { Minus, Plus, Trash2 } from 'lucide-react';
 
 export default function CartItem({ item }) {
   const { updateQuantity, removeItem } = useCart();
   const step = quantityStep(item.price_type);
 
   return (
-    <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
-      {/* Image */}
-      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded">
+    <div className="flex flex-wrap items-center gap-4 rounded-card border border-cream-300 bg-white p-4">
+      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-cream-100">
         <RemoteImage
           src={item.image || PLACEHOLDER_IMAGE}
           alt={item.name}
@@ -22,45 +22,43 @@ export default function CartItem({ item }) {
         />
       </div>
 
-      {/* Info */}
-      <div className="flex-1">
-        <h3 className="font-semibold">{item.name}</h3>
-        <p className="text-sm text-gray-600">
+      <div className="min-w-[8rem] flex-1">
+        <h3 className="font-semibold text-ink-900">{item.name}</h3>
+        <p className="mt-0.5 text-sm text-ink-500">
           {formatPrice(item.price)} / {unitShort(item.price_type)}
         </p>
       </div>
 
-      {/* Quantity */}
-      <div className="flex flex-col items-center gap-1">
-        <div className="flex items-center gap-2 border border-gray-300 rounded">
-          <button
-            onClick={() => updateQuantity(item.id, Number(item.quantity) - step)}
-            className="px-3 py-1 hover:bg-gray-100"
-            aria-label="Diminuer la quantité"
-          >
-            −
-          </button>
-          <span className="px-3 py-1 font-semibold whitespace-nowrap">
-            {formatQuantity(item.quantity, item.price_type)}
-          </span>
-          <button
-            onClick={() => updateQuantity(item.id, Number(item.quantity) + step)}
-            className="px-3 py-1 hover:bg-gray-100"
-            aria-label="Augmenter la quantité"
-          >
-            +
-          </button>
-        </div>
+      {/* Cibles larges : le panier se corrige souvent au pouce, en marchant. */}
+      <div className="flex items-center rounded-full border border-cream-300 bg-cream-100">
+        <button
+          onClick={() => updateQuantity(item.id, Number(item.quantity) - step)}
+          className="grid h-11 w-11 place-items-center rounded-full text-ink-700 transition hover:bg-cream-200"
+          aria-label="Diminuer la quantité"
+        >
+          <Minus size={17} />
+        </button>
+        <span className="min-w-[4.5rem] whitespace-nowrap text-center font-semibold tabular-nums text-ink-900">
+          {formatQuantity(item.quantity, item.price_type)}
+        </span>
+        <button
+          onClick={() => updateQuantity(item.id, Number(item.quantity) + step)}
+          className="grid h-11 w-11 place-items-center rounded-full text-ink-700 transition hover:bg-cream-200"
+          aria-label="Augmenter la quantité"
+        >
+          <Plus size={17} />
+        </button>
       </div>
 
-      {/* Total */}
       <div className="text-right">
-        <p className="font-semibold text-lg">{formatPrice(item.price * item.quantity)}</p>
+        <p className="font-display text-lg font-semibold tabular-nums text-forest-800">
+          {formatPrice(item.price * item.quantity)}
+        </p>
         <button
           onClick={() => removeItem(item.id)}
-          className="text-sm text-red-600 hover:text-red-800 font-semibold"
+          className="mt-0.5 inline-flex items-center gap-1 text-sm font-semibold text-clay-600 transition hover:text-clay-500"
         >
-          Supprimer
+          <Trash2 size={14} /> Retirer
         </button>
       </div>
     </div>

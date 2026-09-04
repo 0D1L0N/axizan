@@ -6,7 +6,6 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
-use App\Models\Promotion;
 use App\Models\User;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
@@ -31,16 +30,25 @@ class OrderService
     public function createOrder(User $client, array $cartItems, array $data): Order
     {
         return DB::transaction(function () use ($client, $cartItems, $data) {
-            // Valider le stock
+            /*
+             * Axizán ne détient aucun stock : les articles sont retirés chez des
+             * fournisseurs partenaires, au moment de la commande.
+             *
+             * `is_available` est donc le SEUL verrou — un interrupteur que
+             * l'administration bascule quand un produit disparaît du marché
+             * national. `stock_quantity` reste un simple signal indicatif,
+             * jamais une limite : refuser 50 kg d'ignames parce qu'une colonne
+             * affiche 45 n'aurait aucun sens quand le fournisseur en a des sacs.
+             */
             foreach ($cartItems as $item) {
-                if ($item['type'] === 'product') {
-                    $product = Product::find($item['product_id']);
-                    if (!$product || !$product->is_available) {
-                        throw new \Exception("Produit non disponible: {$product->name}");
-                    }
-                    if ($product->stock_quantity < $item['quantity']) {
-                        throw new \Exception("Stock insuffisant pour: {$product->name}");
-                    }
+                $product = Product::find($item['product_id']);
+
+                if (! $product) {
+                    throw new \Exception('Produit introuvable.');
+                }
+
+                if (! $product->is_available) {
+                    throw new \Exception("Produit non disponible : {$product->name}");
                 }
             }
 
@@ -48,14 +56,8 @@ class OrderService
             $subtotal = $this->calculateSubtotal($cartItems);
             $deliveryFee = $this->calculateDeliveryFee($data['delivery_address_id']);
             $tax = $this->calculateTax($subtotal);
-            $promoDiscount = 0;
 
-            // Appliquer promo si fournie
-            if (isset($data['promo_code_id'])) {
-                $promoDiscount = $this->applyPromotion($client, $data['promo_code_id'], $subtotal);
-            }
-
-            $total = $subtotal + $deliveryFee + $tax - $promoDiscount;
+            $total = $subtotal + $deliveryFee + $tax;
 
             // Créer la commande
             $order = Order::create([
@@ -68,10 +70,10 @@ class OrderService
                 'subtotal' => $subtotal,
                 'delivery_fee' => $deliveryFee,
                 'tax' => $tax,
-                'discount_amount' => $promoDiscount,
+                // Aucune promotion n'est en place ; la colonne reste à zéro et
+                // sert de place pour un geste commercial futur.
+                'discount_amount' => 0,
                 'total' => $total,
-                'promo_code_id' => $data['promo_code_id'] ?? null,
-                'promo_discount' => $promoDiscount,
                 'payment_method' => $data['payment_method'] ?? 'manual',
                 'payment_status' => 'pending',
                 'client_notes' => $data['client_notes'] ?? null,
@@ -153,7 +155,14 @@ class OrderService
             'preparateur_notes' => $notes,
         ]);
 
+        $order->loadMissing('preparateur.market.depot', 'deliveryAddress');
+
         $this->notificationService->sendOrderReadyNotification($order);
+
+        // Le panier est au depot et n'attend plus que quelqu'un pour le
+        // prendre : c'est le moment ou les livreurs doivent l'apprendre.
+        $this->notificationService->sendBasketAtDepotNotification($order);
+
         Log::info("Order {$order->order_number} marked as ready");
 
         return $order;
@@ -203,9 +212,6 @@ class OrderService
             'status' => OrderStatus::COMPLETED,
             'completed_at' => now(),
         ]);
-
-        // Demander un avis
-        $this->notificationService->sendReviewRequestNotification($order);
 
         return $order;
     }
@@ -281,13 +287,8 @@ class OrderService
         // addOrderItem() : sinon le sous-total affiche ne correspond pas a la
         // somme des lignes que le client a sous les yeux.
         foreach ($cartItems as $item) {
-            if ($item['type'] === 'product') {
-                $product = Product::find($item['product_id']);
-                $subtotal += Money::lineTotal($product->base_price, $item['quantity']);
-            } elseif ($item['type'] === 'menu') {
-                $menu = \App\Models\Menu::find($item['menu_id']);
-                $subtotal += Money::lineTotal($menu->discounted_price ?? $menu->base_price, $item['quantity']);
-            }
+            $product = Product::find($item['product_id']);
+            $subtotal += Money::lineTotal($product->base_price, $item['quantity']);
         }
 
         return $subtotal;
@@ -301,25 +302,4 @@ class OrderService
         return Money::percentOf($subtotal, self::TAX_RATE_PERCENT);
     }
 
-    /**
-     * Appliquer promotion
-     */
-    private function applyPromotion(User $client, $promoId, float $orderTotal): float
-    {
-        $promo = Promotion::find($promoId);
-
-        if (!$promo || !$promo->isValid()) {
-            return 0;
-        }
-
-        if (!$promo->canBeUsedBy($client)) {
-            return 0;
-        }
-
-        if ($orderTotal < $promo->min_order_amount) {
-            return 0;
-        }
-
-        return Money::round($promo->calculateDiscount($orderTotal));
-    }
 }

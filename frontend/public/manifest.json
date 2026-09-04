@@ -1,7 +1,7 @@
 {
   "name": "Axizán — On fait votre marché, vous cuisinez.",
   "short_name": "Axizán",
-  "description": "Vos produits frais achetés au marché le jour même et livrés dans le créneau d'une heure de votre choix, à Cotonou, Abomey-Calavi et Porto-Novo.",
+  "description": "Vos produits choisis chez nos fournisseurs partenaires et livrés le jour même, dans le créneau d'une heure de votre choix, à Cotonou, Abomey-Calavi et Porto-Novo.",
   "id": "/",
   "start_url": "/?source=pwa",
   "scope": "/",

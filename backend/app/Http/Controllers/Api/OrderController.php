@@ -14,6 +14,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -38,30 +39,19 @@ class OrderController extends Controller
             // enregistre le choix pour guider le paiement et la vérification.
             'payment_provider' => 'nullable|in:mtn,moov,celtiis',
             'payer_phone' => 'nullable|string|max:30',
-            'promo_code_id' => 'nullable|exists:promotions,id',
             'client_notes' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
-            'items.*.type' => 'required|in:product,menu',
-            'items.*.product_id' => 'nullable|exists:products,id',
-            'items.*.menu_id' => 'nullable|exists:menus,id',
+            // Une commande ne contient que des produits. Les paniers-recettes
+            // sont un raccourci d'interface : ils résolvent leurs ingrédients
+            // vers de vrais produits avant d'arriver ici. `type` reste accepté
+            // pour compatibilité avec les paniers déjà enregistrés.
+            'items.*.type' => 'nullable|in:product',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.quantity_unit' => 'nullable|string|max:20',
             'items.*.special_instructions' => 'nullable|string|max:255',
             'items.*.substitution_preference' => 'nullable|in:replace,remove',
         ]);
-
-        foreach ($validated['items'] as $item) {
-            $missingProduct = $item['type'] === 'product' && empty($item['product_id']);
-            $missingMenu = $item['type'] === 'menu' && empty($item['menu_id']);
-
-            if ($missingProduct || $missingMenu) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'invalid_items',
-                    'message' => 'Chaque item doit fournir product_id (type=product) ou menu_id (type=menu)',
-                ], 422);
-            }
-        }
 
         // Le delai minimum et la capacite se verifient ici, pas seulement dans
         // l'interface : sinon n'importe quel appel direct reserve un creneau
@@ -322,10 +312,11 @@ class OrderController extends Controller
         // e-mail et son numero personnel au client.
         $order = Order::with(
             'items.product',
+            'items.replacementProduct:id,name,price_type',
             'client',
             'deliveryAddress',
             'deliverySlot',
-            'delivery.livreur:id,name,avatar_url',
+            'delivery.livreur:id,name,phone,avatar_url',
             'payment'
         )
             ->find($id);
@@ -335,6 +326,13 @@ class OrderController extends Controller
                 'success' => false,
                 'error' => 'not_found',
             ], 404);
+        }
+
+        // Le numero du livreur n'est communique que PENDANT le trajet : appeler
+        // celui qui arrive est normal, garder son numero personnel une fois la
+        // course finie ne l'est pas.
+        if ($order->status !== OrderStatus::IN_DELIVERY && $order->delivery?->livreur) {
+            $order->delivery->livreur->makeHidden('phone');
         }
 
         return response()->json([
@@ -387,7 +385,9 @@ class OrderController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => 'required|string',
+            // Contraindre aux valeurs de l'énumération : sans cela un admin
+            // pouvait écrire n'importe quelle chaîne et corrompre le parcours.
+            'status' => ['required', Rule::enum(OrderStatus::class)],
         ]);
 
         $order->update(['status' => $validated['status']]);

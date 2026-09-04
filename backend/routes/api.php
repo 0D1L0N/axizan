@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\RecurringBasketController;
 use App\Http\Controllers\Api\PaymentMethodController;
+use App\Http\Controllers\Api\FedapayController;
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +47,10 @@ Route::prefix('v1')->group(function () {
     Route::get('/products/{id}', [ProductController::class, 'show']);
     Route::get('/categories', [ProductController::class, 'categories']);
     Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+
+    // Notification serveur a serveur de Fedapay. Publique par nature : il n'y
+    // a pas d'utilisateur connecte, l'authenticite vient de la signature.
+    Route::post('/webhooks/fedapay', [FedapayController::class, 'webhook']);
     Route::get('/delivery-zones', [LogisticsController::class, 'zones']);
     Route::get('/delivery-slots', [LogisticsController::class, 'slots']);
 
@@ -90,12 +95,12 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', [OrderController::class, 'cancel']);
             Route::post('/{id}/reorder', [OrderController::class, 'reorder']);
             Route::post('/{id}/declare-payment', [OrderController::class, 'declarePayment']);
+            Route::post('/{id}/confirm-payment', [FedapayController::class, 'confirm']);
             Route::patch('/{id}/status', [OrderController::class, 'updateStatus']);
         });
 
         // Payments
         Route::prefix('payments')->group(function () {
-            Route::post('/initiate', [PaymentController::class, 'initiate']);
             Route::get('/{id}/status', [PaymentController::class, 'checkStatus']);
             Route::get('/history', [PaymentController::class, 'history']);
         });
@@ -117,13 +122,17 @@ Route::prefix('v1')->group(function () {
             Route::get('/orders/mine', [PreparatorController::class, 'mine']);
             Route::patch('/orders/{id}/accept', [PreparatorController::class, 'accept']);
             Route::patch('/orders/{id}/start', [PreparatorController::class, 'start']);
+            Route::patch('/orders/{id}/release', [PreparatorController::class, 'release']);
             Route::get('/suppliers', [PreparatorController::class, 'suppliers']);
             Route::patch('/orders/{orderId}/items/{itemId}', [PreparatorController::class, 'updateItem']);
             Route::patch('/orders/{id}/ready', [PreparatorController::class, 'ready']);
+            // POST + _method=PATCH : un envoi multipart ne passe pas en PATCH.
+            Route::post('/orders/{id}/ready', [PreparatorController::class, 'ready']);
         });
 
         // Admin
         Route::middleware('admin')->prefix('admin')->group(function () {
+            Route::get('/markets', [AdminController::class, 'markets']);
             Route::get('/payments/pending', [AdminController::class, 'pendingPayments']);
             Route::post('/orders/{id}/validate-payment', [AdminController::class, 'validatePayment']);
             Route::post('/staff', [AdminController::class, 'createStaff']);

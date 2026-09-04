@@ -136,7 +136,9 @@ services:
     container_name: axizan-nextjs
     working_dir: /app
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      # Surchargeable par API_URL dans le .env a la racine : « localhost »
+      # designe le telephone quand on teste depuis un mobile, pas le PC.
+      - NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000/api/v1}
       # Le montage Windows ne propage pas les evenements inotify : sans polling,
       # le serveur de dev ne voit aucune modification et il faut redemarrer le
       # conteneur a chaque edition.

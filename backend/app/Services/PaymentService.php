@@ -14,32 +14,6 @@ class PaymentService
     {}
 
     /**
-     * Initier un paiement Mobile Money
-     */
-    public function initiateMobileMoneyPayment(Order $order, $phoneNumber): Payment
-    {
-        $payment = Payment::create([
-            'order_id' => $order->id,
-            'user_id' => $order->client_id,
-            'amount' => $order->total,
-            'currency' => 'XOF',
-            'payment_method' => 'mobile_money',
-            'payment_provider' => 'mtn', // ou 'moov', 'celtiis'
-            'status' => PaymentStatus::PROCESSING,
-            'phone_number' => $phoneNumber,
-        ]);
-
-        // TODO: Appel API Mobile Money
-        // $response = $this->callMobileMoneyAPI($phoneNumber, $order->total);
-        // $payment->mobile_money_transaction_id = $response['transaction_id'];
-        // $payment->save();
-
-        Log::info("Payment initiated for order {$order->order_number}");
-
-        return $payment;
-    }
-
-    /**
      * Créer un paiement en attente de validation manuelle (admin)
      */
     public function createManualPayment(Order $order, ?string $provider = null, ?string $payerPhone = null): Payment
@@ -119,36 +93,15 @@ class PaymentService
             throw new \Exception("Seuls les paiements complétés peuvent être remboursés");
         }
 
+        // Marque le remboursement dans nos registres. Le reversement effectif
+        // se fait aujourd'hui à la main ; FedaPay expose un remboursement par
+        // API, à brancher ici le jour où le besoin se présente.
         $payment->update([
             'status' => PaymentStatus::REFUNDED,
         ]);
 
-        // TODO: Appel API Mobile Money pour remboursement
-        // $this->callMobileMoneyRefundAPI($payment);
-
         Log::info("Payment refunded for order {$payment->order->order_number}");
 
         return $payment;
-    }
-
-    /**
-     * Générer facture (TODO: Implémenter avec PDF generation)
-     */
-    public function generateInvoice(Order $order)
-    {
-        // TODO: Implémenter avec Laravel PDF
-    }
-
-    /**
-     * Appel API Mobile Money (TODO)
-     */
-    private function callMobileMoneyAPI($phoneNumber, $amount)
-    {
-        // TODO: Intégrer avec API Mobile Money
-        // Exemples:
-        // - MTN Mobile Money API
-        // - Moov Money API
-        // - Celtiis Cash API
-        return [];
     }
 }

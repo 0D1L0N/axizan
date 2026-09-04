@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { normalizeQuantity, minQuantity } from '@/app/lib/units';
 import { cartService } from '@/app/services';
 import { useAuth } from '@/app/contexts/AuthContext';
@@ -32,8 +32,6 @@ export function CartProvider({ children }) {
   const { user, loading: authLoading } = useAuth();
 
   const [items, setItems] = useState([]);
-  const [promoCode, setPromoCode] = useState(null);
-  const [promoDiscount, setPromoDiscount] = useState(0);
   const [hydrated, setHydrated] = useState(false);
 
   // Tant que la fusion n'a pas eu lieu, on ne renvoie rien au serveur : sinon
@@ -47,8 +45,6 @@ export function CartProvider({ children }) {
       try {
         const parsed = JSON.parse(stored);
         setItems((parsed.items || []).filter(isValidItem));
-        setPromoCode(parsed.promoCode || null);
-        setPromoDiscount(parsed.promoDiscount || 0);
       } catch (error) {
         console.error('Impossible de charger le panier', error);
       }
@@ -58,9 +54,9 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const payload = JSON.stringify({ items, promoCode, promoDiscount });
+    const payload = JSON.stringify({ items });
     window.localStorage.setItem(STORAGE_KEY, payload);
-  }, [items, promoCode, promoDiscount]);
+  }, [items]);
 
   /**
    * A la connexion : on pousse le panier local, puis on adopte le panier
@@ -152,17 +148,21 @@ export function CartProvider({ children }) {
 
   const clearCart = useCallback(() => {
     setItems([]);
-    setPromoCode(null);
-    setPromoDiscount(0);
     if (user) cartService.clear().catch(() => {});
   }, [user]);
 
-  const calculateSubtotal = useCallback(() => {
-    return items.reduce((total, item) => total + item.price * item.quantity, 0);
-  }, [items]);
-
-  const subtotal = calculateSubtotal();
-  const total = subtotal - promoDiscount;
+  /**
+   * Le panier ne connait QUE le prix des articles.
+   *
+   * Les frais de livraison dependent de la zone de l'adresse choisie, et la
+   * taxe se calcule dessus : ces deux montants ne sont connus qu'au checkout,
+   * et le total qui engage est celui que le serveur renvoie a la creation de
+   * la commande. Afficher ici un total inventé serait un mensonge poli.
+   */
+  const subtotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [items]
+  );
 
   return (
     <CartContext.Provider
@@ -173,11 +173,6 @@ export function CartProvider({ children }) {
         updateQuantity,
         clearCart,
         subtotal,
-        promoCode,
-        setPromoCode,
-        promoDiscount,
-        setPromoDiscount,
-        total,
       }}
     >
       {children}

@@ -49,8 +49,8 @@ export default {
           500: '#6B6053',
           300: '#9C9184',
         },
-        // Alias de compatibilite : des pages utilisent encore text-primary.
-        primary: '#12372A',
+        // Plus d'alias `primary` : toutes les pages sont passees aux tokens.
+        // Le reintroduire rouvrirait la porte a deux noms pour une couleur.
       },
       fontFamily: {
         display: ['var(--font-display)', 'Georgia', 'serif'],

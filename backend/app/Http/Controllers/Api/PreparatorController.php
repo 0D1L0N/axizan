@@ -11,6 +11,8 @@ use App\Models\Supplier;
 use App\Services\OrderService;
 use App\Enums\OrderStatus;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Espace preparateur.
@@ -80,11 +82,13 @@ class PreparatorController extends Controller
             return $denied;
         }
 
-        $orders = $request->user()->preparerOrders()
+        $user = $request->user();
+
+        $orders = $user->preparerOrders()
             ->whereIn('status', [OrderStatus::ACCEPTED, OrderStatus::PREPARING])
             ->with(
                 'client:id,name,phone',
-                'items.product',
+                'items.product.category:id,name',
                 'items.supplier:id,name,stall',
                 'items.replacementProduct:id,name,price_type',
                 'deliveryAddress',
@@ -93,7 +97,16 @@ class PreparatorController extends Controller
             ->orderBy('delivery_date')
             ->get();
 
-        return response()->json(['success' => true, 'data' => $orders]);
+        $this->suggestSuppliers($orders, $user->market_id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $orders,
+            'meta' => [
+                // Le preparateur doit savoir OU deposer avant de partir.
+                'depot' => $user->market?->depot?->only(['id', 'name', 'address', 'city', 'landmark', 'phone']),
+            ],
+        ]);
     }
 
     /**
@@ -225,6 +238,78 @@ class PreparatorController extends Controller
         }
     }
 
+    /**
+     * Rendre une commande qu'on ne peut pas honorer.
+     *
+     * Sans cette porte de sortie, une moto en panne ou un preparateur malade
+     * bloquait la commande pour toujours : preparateur_id reste pose, personne
+     * d'autre ne peut la prendre, et le client attend une commande que plus
+     * personne ne traite.
+     *
+     * Les lignes deja pointees sont REMISES A ZERO. Le preparateur suivant doit
+     * repartir d'une liste vierge : ce qui a ete recupere est physiquement chez
+     * le precedent, le laisser coche ferait croire que le panier est a moitie
+     * pret alors qu'il est ailleurs.
+     */
+    public function release($id, Request $request)
+    {
+        $order = $this->findOwnedOrder($id, $request);
+
+        if ($order instanceof \Illuminate\Http\JsonResponse) {
+            return $order;
+        }
+
+        $data = $request->validate([
+            'reason' => 'required|string|max:300',
+        ], [
+            'reason.required' => 'Indiquez pourquoi vous rendez cette commande.',
+        ]);
+
+        $order->load('items');
+        $alreadyPicked = $order->items->where('collection_status', '!=', 'pending');
+
+        DB::transaction(function () use ($order, $data, $request, $alreadyPicked) {
+            OrderEvent::record(
+                $order,
+                'order.released',
+                self::statusName($order->status),
+                OrderStatus::PENDING->value,
+                $data['reason'],
+                [
+                    'preparateur_id' => $request->user()->id,
+                    // On garde la trace de ce qui avait ete pointe : c'est ce
+                    // qui permettra de retrouver la marchandise.
+                    'items_already_picked' => $alreadyPicked->pluck('product_id')->all(),
+                ]
+            );
+
+            $order->items()->update([
+                'collection_status' => 'pending',
+                'supplier_id' => null,
+                'replacement_product_id' => null,
+                'collected_at' => null,
+            ]);
+
+            $order->update([
+                'status' => OrderStatus::PENDING,
+                'preparateur_id' => null,
+                'accepted_at' => null,
+                'preparing_started_at' => null,
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Commande rendue. Elle est de nouveau disponible pour votre marché.',
+            'meta' => ['items_reset' => $alreadyPicked->count()],
+        ]);
+    }
+
+    private static function statusName($status): ?string
+    {
+        return $status instanceof \BackedEnum ? $status->value : $status;
+    }
+
     public function start($id, Request $request)
     {
         $order = $this->findOwnedOrder($id, $request);
@@ -279,6 +364,22 @@ class PreparatorController extends Controller
             ], 422);
         }
 
+        $request->validate([
+            'photo' => 'nullable|image|max:5120',
+            'notes' => 'nullable|string|max:500',
+        ], [
+            'photo.image' => 'Le fichier doit être une image.',
+            'photo.max' => 'Photo trop lourde (5 Mo maximum).',
+        ]);
+
+        // Photo du panier : ce que le client recevra, date et horodate. C'est
+        // aussi la seule preuve d'Axizan si la qualite est contestee.
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('preparations/'.$order->id, 'public');
+            $order->prep_photo_url = Storage::disk('public')->url($path);
+            $order->save();
+        }
+
         $removed = $order->items->where('collection_status', 'removed');
 
         if ($removed->isNotEmpty()) {
@@ -300,6 +401,44 @@ class PreparatorController extends Controller
             'data' => $order->load('items.product', 'items.supplier:id,name'),
             'meta' => ['removed_count' => $removed->count()],
         ]);
+    }
+
+    /**
+     * Propose un fournisseur par ligne, et l'ordre de parcours du marche.
+     *
+     * La specialite d'un fournisseur porte le nom d'une categorie produit :
+     * « Legumes frais », « Tubercules »... Le rapprochement est donc direct, et
+     * il transforme le travail du preparateur — au lieu de choisir un
+     * fournisseur sur chaque ligne, il confirme.
+     *
+     * `pick_order` regroupe ensuite les lignes par etal : il traverse le marche
+     * une fois au lieu de faire des allers-retours entre les allees.
+     */
+    private function suggestSuppliers($orders, ?int $marketId): void
+    {
+        if (! $marketId) {
+            return;
+        }
+
+        $bySpeciality = Supplier::active()
+            ->where('market_id', $marketId)
+            ->get()
+            ->keyBy(fn (Supplier $supplier) => mb_strtolower(trim((string) $supplier->speciality)));
+
+        // Ordre de parcours stable : les etals dans l'ordre ou ils ont ete
+        // enregistres, ce qui suit en general la disposition du marche.
+        $order = $bySpeciality->keys()->flip();
+
+        foreach ($orders as $orderModel) {
+            foreach ($orderModel->items as $item) {
+                $speciality = mb_strtolower(trim((string) $item->product?->category?->name));
+                $match = $bySpeciality->get($speciality);
+
+                $item->setAttribute('suggested_supplier_id', $match?->id);
+                // Les lignes sans correspondance passent en fin de liste.
+                $item->setAttribute('pick_order', $order->get($speciality, 999));
+            }
+        }
     }
 
     /** Avancement d'une commande, pour la barre de progression. */

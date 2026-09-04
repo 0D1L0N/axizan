@@ -46,7 +46,11 @@ return [
         NotificationType::ORDER_PREPARING->value => [],
         NotificationType::ORDER_READY->value => [],
         NotificationType::DELIVERY_ASSIGNED->value => [],
-        NotificationType::REVIEW_REQUEST->value => [],
+
+        // Panier depose au depot : envoye a TOUS les livreurs actifs, donc
+        // in-app uniquement. Un SMS par panier et par livreur couterait le
+        // prix d'une course, et le premier arrive prend de toute facon.
+        NotificationType::BASKET_AT_DEPOT->value => [],
     ],
 
     // Types que le client ne peut pas desactiver : ils concernent son argent
