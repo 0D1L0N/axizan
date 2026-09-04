@@ -44,6 +44,7 @@ function CheckoutPage() {
   const [slots, setSlots] = useState([]);
   const [slotMeta, setSlotMeta] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentOnline, setPaymentOnline] = useState(false);
   const [paymentProvider, setPaymentProvider] = useState('');
   const [paymentDelay, setPaymentDelay] = useState('');
 
@@ -90,6 +91,10 @@ function CheckoutPage() {
       .then((res) => {
         setPaymentMethods(res.data.data);
         setPaymentDelay(res.data.meta?.validation_delay || '');
+        // « online » : FedaPay est actif, le compte du client sera débité.
+        // Le texte affiché en dépend — annoncer un régime pendant que
+        // l'application en applique un autre coûte un paiement, ou la confiance.
+        setPaymentOnline(res.data.meta?.flow === 'online');
         const first = res.data.data.find((method) => method.enabled);
         if (first) setPaymentProvider(first.code);
       })
@@ -405,7 +410,9 @@ function CheckoutPage() {
             <div className="mt-6 border-t border-ink-900/8 pt-6">
               <h3 className="font-display text-xl font-semibold text-forest-800">Comment payez-vous&nbsp;?</h3>
               <p className="mt-1 text-sm text-ink-500">
-                Vous recevrez les instructions juste après la commande.
+                {paymentOnline
+                  ? 'Vous paierez juste après, depuis votre téléphone.'
+                  : 'Vous recevrez les instructions juste après la commande.'}
               </p>
               <div className="mt-4">
                 <PaymentMethodPicker
@@ -413,6 +420,7 @@ function CheckoutPage() {
                   value={paymentProvider}
                   onChange={setPaymentProvider}
                   delay={paymentDelay}
+                  online={paymentOnline}
                 />
               </div>
             </div>

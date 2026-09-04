@@ -425,3 +425,48 @@ que la description contient le numéro.
 
 Numéros de test en sandbox : **66000001** réussit, **66000000** échoue (MTN) ;
 **64000001** réussit, **64000000** échoue (Moov).
+
+## Écran de paiement : un seul chemin (4 sept. 2026)
+
+Le module **Checkout.js de FedaPay a été retiré**. Il ouvrait une fenêtre qui
+redemandait nom, prénom et e-mail — des informations déjà en base, et une
+saisie de plus entre le client et son paiement. Il ne reste que la demande
+poussée : opérateur, numéro, c'est tout.
+
+Conséquence : `FedapayButton.js` supprimé. La route `confirm-payment` est
+conservée comme rattrapage — c'est le recours quand un paiement reste bloqué et
+qu'on a son identifiant sous les yeux dans le tableau de bord FedaPay.
+
+### Identité visuelle des opérateurs
+
+`OperatorMark` centralise l'affichage des trois opérateurs. Aucun paquet
+d'icônes ne couvre Moov Africa ni Celtiis — ce sont des marques ouest-africaines
+absentes de Simple Icons, react-icons et lucide. En attendant les fichiers
+officiels, l'application affiche des pastilles typographiques aux couleurs de
+chaque opérateur.
+
+**Pour passer aux vrais logos** : déposer les fichiers dans
+`frontend/public/operators/` et renseigner le champ `logo` du composant. Une
+ligne par opérateur, rien d'autre ne bouge. Voir `public/operators/LISEZ-MOI.md`.
+
+### Le texte du checkout ne ment plus
+
+`PaymentMethodPicker` annonçait « rien n'est prélevé automatiquement » alors que
+FedaPay débite désormais le compte du client. Le texte suit maintenant le régime
+réel (`meta.flow`) : annoncer l'un pendant que l'application fait l'autre coûte
+un paiement, ou la confiance.
+
+### Deux gardes-fous de test
+
+- **FedaPay est coupé d'office dans `TestCase`**, clés effacées. Le `.env` local
+  porte des clés **live** : sans cette coupure, un test appelant FedaPay
+  créerait de vraies transactions et ferait sonner de vrais téléphones.
+- `test_payment_methods_are_public` imposait le régime attendu sans le
+  configurer : il ne disait que si le développeur avait des clés, et il a
+  effectivement cassé le jour où on en a mis.
+
+### Code mort retiré
+
+`paymentService.initiate` pointait vers `/payments/initiate`, route supprimée
+plus tôt dans la journée. Et `preparatorService.ready` gardait une branche
+« sans photo » que le serveur refuse désormais systématiquement.

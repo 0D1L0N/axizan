@@ -5,12 +5,12 @@ import { useToast } from '@/app/contexts/ToastContext';
 import { orderService } from '@/app/services';
 import { formatPrice } from '@/app/lib/units';
 import { Check, Copy, Loader2, ShieldCheck } from 'lucide-react';
-import FedapayButton from '@/app/components/FedapayButton';
 import MomoPushForm from '@/app/components/MomoPushForm';
 
 /**
- * Paiement en ligne : le client règle dans le module FedaPay, l'opérateur
- * confirme, et la commande part sans intervention humaine.
+ * Paiement en ligne : le client saisit son numéro, son téléphone sonne, il
+ * tape son code. L'opérateur confirme et la commande part sans intervention
+ * humaine.
  */
 function OnlinePayment({ order, fedapay, onSettled }) {
   return (
@@ -25,29 +25,16 @@ function OnlinePayment({ order, fedapay, onSettled }) {
         </p>
       </div>
 
+      {/*
+        Un seul chemin : la demande poussée.
+
+        Le module Checkout.js de FedaPay a été retiré. Il ouvrait une fenêtre
+        qui redemandait nom, prénom et e-mail — des informations que nous
+        avons déjà, et une saisie de plus entre le client et son paiement. Ici
+        il n'y a que l'opérateur et le numéro à débiter.
+      */}
       <div className="p-6">
-        {/*
-          La demande poussée d'abord : c'est le parcours normal ici — le
-          téléphone sonne, on tape son code, c'est fini.
-
-          Le module FedaPay reste dessous comme second choix : il couvre la
-          carte bancaire et les opérateurs des pays voisins, que la poussée
-          Mobile Money béninoise ne sait pas atteindre.
-        */}
         <MomoPushForm order={order} sandbox={fedapay.sandbox} onSettled={onSettled} />
-
-        <div className="my-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] text-ink-300">
-          <span className="h-px flex-1 bg-cream-300" />
-          ou
-          <span className="h-px flex-1 bg-cream-300" />
-        </div>
-
-        <FedapayButton
-          order={order}
-          publicKey={fedapay.public_key}
-          sandbox={fedapay.sandbox}
-          onSettled={onSettled}
-        />
       </div>
     </section>
   );

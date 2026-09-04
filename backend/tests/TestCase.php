@@ -41,6 +41,25 @@ abstract class TestCase extends BaseTestCase
             'cache.default' => 'array',
             'queue.default' => 'sync',
             'session.driver' => 'array',
+
+            /*
+             * FedaPay coupe par defaut, cles effacees.
+             *
+             * Deux raisons, la seconde serieuse. D'abord un test ne doit pas
+             * dire quelque chose de different selon que le developpeur a
+             * configure des cles ou non. Ensuite : le .env local peut porter
+             * des cles LIVE. Sans cette coupure, un test qui appelle FedaPay
+             * creerait de vraies transactions et ferait sonner de vrais
+             * telephones.
+             *
+             * Les tests qui ont besoin de FedaPay le reactivent eux-memes,
+             * avec des cles factices (voir FedapayPaymentTest).
+             */
+            'payments.fedapay.enabled' => false,
+            'payments.fedapay.public_key' => null,
+            'payments.fedapay.secret_key' => null,
+            'payments.fedapay.webhook_secret' => null,
+            'payments.fedapay.sandbox' => true,
         ]);
 
         DB::purge('sqlite');

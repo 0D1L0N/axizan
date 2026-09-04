@@ -42,6 +42,11 @@ class PaymentDeclarationTest extends TestCase
 
     public function test_payment_methods_are_public(): void
     {
+        // Le regime est impose ICI, pas hérité du .env de la machine : sinon
+        // ce test dit seulement si le developpeur a des cles FedaPay, et il
+        // casse le jour ou quelqu'un en configure.
+        config(['payments.fedapay.enabled' => false]);
+
         $response = $this->getJson('/api/v1/payment-methods')->assertOk();
 
         $this->assertNotEmpty($response->json('data'));

@@ -5,6 +5,7 @@ import { useToast } from '@/app/contexts/ToastContext';
 import { orderService } from '@/app/services';
 import { formatPrice } from '@/app/lib/units';
 import { Check, Loader2, Smartphone } from 'lucide-react';
+import OperatorMark from '@/app/components/OperatorMark';
 
 const OPERATORS = [
   { value: 'mtn', label: 'MTN MoMo' },
@@ -111,21 +112,31 @@ export default function MomoPushForm({ order, sandbox, onSettled }) {
   return (
     <form onSubmit={send} className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
-        {OPERATORS.map((operator) => (
-          <button
-            key={operator.value}
-            type="button"
-            onClick={() => setProvider(operator.value)}
-            aria-pressed={provider === operator.value}
-            className={`rounded-xl border-2 px-2 py-3 text-sm font-bold transition ${
-              provider === operator.value
-                ? 'border-forest-800 bg-forest-800 text-cream'
-                : 'border-cream-300 bg-white text-ink-500 hover:border-forest-600'
-            }`}
-          >
-            {operator.label}
-          </button>
-        ))}
+        {OPERATORS.map((operator) => {
+          const selected = provider === operator.value;
+
+          return (
+            <button
+              key={operator.value}
+              type="button"
+              onClick={() => setProvider(operator.value)}
+              aria-pressed={selected}
+              aria-label={operator.label}
+              className={`flex flex-col items-center gap-2 rounded-card border-2 px-2 py-3 transition ${
+                selected
+                  ? 'border-forest-800 bg-cream-100'
+                  : 'border-cream-300 bg-white hover:border-forest-600'
+              }`}
+            >
+              <OperatorMark code={operator.value} size={44} />
+              <span
+                className={`text-xs font-bold ${selected ? 'text-forest-800' : 'text-ink-500'}`}
+              >
+                {operator.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <label className="block">

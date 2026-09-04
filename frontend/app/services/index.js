@@ -49,9 +49,10 @@ export const orderService = {
   /** Le client declare avoir paye. Ne valide rien : un admin verifie ensuite. */
   declarePayment: (id, data) => api.post(`/orders/${id}/declare-payment`, data),
   /**
-   * Transmet l'identifiant rendu par le module FedaPay. Le serveur interroge
-   * l'operateur avant de croire quoi que ce soit — ce n'est pas une
-   * declaration, c'est une demande de verification.
+   * Rattrapage : force la vérification d'une transaction dont on connaît
+   * l'identifiant. Plus aucun écran ne l'appelle depuis le retrait du module
+   * Checkout.js — c'est le recours quand un paiement reste bloqué et qu'on a
+   * l'identifiant sous les yeux dans le tableau de bord FedaPay.
    */
   confirmPayment: (id, transactionId) =>
     api.post(`/orders/${id}/confirm-payment`, { transaction_id: transactionId }),
@@ -73,8 +74,6 @@ export const deliveryService = {
 };
 
 export const paymentService = {
-  initiate: (orderId, phoneNumber) =>
-    api.post('/payments/initiate', { order_id: orderId, phone_number: phoneNumber }),
   checkStatus: (paymentId) => api.get(`/payments/${paymentId}/status`),
   getHistory: (params) => api.get('/payments/history', { params }),
 };
@@ -102,16 +101,13 @@ export const preparatorService = {
   accept: (orderId) => api.patch(`/preparateur/orders/${orderId}/accept`),
   start: (orderId, notes) => api.patch(`/preparateur/orders/${orderId}/start`, { notes }),
   /**
-   * Marquer déposée au dépôt, avec une photo du panier.
+   * Marquer déposée au dépôt. La photo du panier est OBLIGATOIRE — le serveur
+   * refuse sans elle, il n'y a donc plus de variante sans fichier.
    *
    * PATCH n'accepte pas de fichier en multipart : on passe par POST avec
    * `_method`, la convention Laravel pour les envois de formulaire.
    */
   ready: (orderId, { notes, photo } = {}) => {
-    if (!photo) {
-      return api.patch(`/preparateur/orders/${orderId}/ready`, { notes });
-    }
-
     const form = new FormData();
     form.append('_method', 'PATCH');
     form.append('photo', photo);
