@@ -656,3 +656,48 @@ L'annulation prime désormais sur l'écriture comptable qui la suit.
 3. **Les créneaux** — fermer un jour, ajuster une capacité, suspendre une zone.
 4. **Les chiffres** — la marge réelle est calculable depuis qu'on a les coûts
    d'achat ; il manque les 1,80 % FedaPay dans `Order::grossMargin()`.
+
+## Images du catalogue rapatriées en local (5 sept. 2026)
+
+**40 photos sur 49 articles**, contre 22 auparavant — et surtout, **plus une
+seule image distante**.
+
+### Pourquoi local plutôt que le CDN
+
+Ce n'était pas qu'un bouchage de trous. Les photos venaient d'`images.unsplash.com`,
+c'est-à-dire d'un serveur hors du continent.
+
+- **Latence.** Mesuré ici : **1,05 s depuis le CDN, 24 ms en local.** Une grille
+  de six produits, c'était six allers-retours vers l'Europe avant que la page ne
+  soit lisible. Depuis une connexion mobile béninoise, l'écart est bien pire.
+- **Hors-ligne.** L'application doit pouvoir être montrée et travaillée sans
+  connexion. Le catalogue apparaissait vide.
+- **Pérennité.** Une photo retirée d'Unsplash cassait une fiche produit sans que
+  personne ne s'en aperçoive avant un client.
+
+Les fichiers vivent dans `frontend/public/products/`, nommés par leur
+identifiant Unsplash d'origine — la traçabilité vers la source est conservée
+sans table de correspondance. 88 fichiers, 12 Mo : une version pleine taille
+(1200 px) et une vignette (400 px, ~30 Ko) par photo.
+
+### Les neuf qui restent sans photo, et pourquoi
+
+> Grande morelle (fotètè) · Aubergine africaine (gboma) · Afitin ·
+> Crevettes séchées · Beurre de karité · Jus de baobab · Jus de tamarin ·
+> Tapioca · Eau minérale
+
+**Ce n'est pas un oubli.** Ces produits n'existent pas dans les banques
+d'images, et ce qu'on y trouve sous ces mots montre autre chose : de la moutarde
+de Dijon pour l'afitin, des épinards pour le fotètè, une aubergine italienne
+pour le gboma. Une cliente de Cotonou le voit immédiatement.
+
+Une photo qui ment sur la marchandise coûte plus cher qu'une case vide — surtout
+pour une marque qui promet de savoir choisir. Ces neuf-là attendent les photos
+d'Axizán, prises au marché.
+
+### Reste à faire
+
+La **gestion du catalogue** reste le blocage : téléverser une photo, activer ou
+retirer un article, corriger un prix. Sans elle, les photos d'Axizán n'auront
+nulle part où aller — et un produit introuvable sur le marché national ne peut
+toujours pas être retiré de la plateforme.

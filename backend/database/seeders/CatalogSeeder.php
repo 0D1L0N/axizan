@@ -9,13 +9,30 @@ use Illuminate\Database\Seeder;
 /**
  * Catalogue beninois : categories et produits du marche.
  *
- * A propos des images : tant que nous n'avons pas nos propres photos, seules des
- * images verifiees (qui repondent reellement en HTTP 200) sont utilisees, et
- * uniquement quand elles correspondent vraiment au produit. Les autres articles
- * ont image_url = null : l'interface affiche alors un visuel de marque
- * "photo a venir" avec l'emoji de la categorie. On evite ainsi deux pieges :
- * les images cassees, et les photos trompeuses (un plat de legumes melanges
- * presente comme du gombo).
+ * A PROPOS DES IMAGES
+ *
+ * Les photos sont telechargees et SERVIES PAR L'APPLICATION, depuis
+ * `frontend/public/products/`. Elles ne dependent plus d'un CDN etranger :
+ * depuis Cotonou, chaque vignette coutait un aller-retour hors du continent,
+ * et le catalogue etait vide sans connexion.
+ *
+ * La regle de choix n'a pas change : une image n'est retenue que si elle
+ * montre VRAIMENT le produit. Neuf articles restent donc sans photo, et
+ * l'interface affiche pour eux un visuel de marque avec l'emoji de la
+ * categorie :
+ *
+ *   Grande morelle (fotete), Aubergine africaine (gboma), Afitin, Crevettes
+ *   sechees, Beurre de karite, Jus de baobab, Jus de tamarin, Tapioca,
+ *   Eau minerale.
+ *
+ * Ce n'est pas un oubli. Ces produits n'existent pas dans les banques
+ * d'images, et ce qu'on y trouve sous ces mots-la montre autre chose : de la
+ * moutarde de Dijon pour l'afitin, des epinards pour le fotete, une aubergine
+ * italienne pour le gboma. Une cliente de Cotonou le voit immediatement, et
+ * une photo qui ment sur la marchandise coute plus cher qu'une case vide —
+ * surtout pour une marque qui promet de savoir choisir.
+ *
+ * Ces neuf-la attendent les photos d'Axizan, prises au marche.
  */
 class CatalogSeeder extends Seeder
 {
@@ -156,28 +173,35 @@ class CatalogSeeder extends Seeder
                 'description' => 'Citrons verts parfumés pour marinades, jus et salades.',
                 'image_url' => $this->img('photo-1590502593747-42a996133562')],
             ['name' => 'Bananes douces', 'category' => 'Fruits', 'base_price' => 800, 'price_type' => 'kg', 'stock_quantity' => 90, 'popularity_score' => 77,
-                'description' => 'Bananes mûres à croquer, pour le petit-déjeuner et les goûters.'],
+                'description' => 'Bananes mûres à croquer, pour le petit-déjeuner et les goûters.',
+                'image_url' => $this->img('photo-1603833665858-e61d17a86224')],
             ['name' => 'Avocats', 'category' => 'Fruits', 'base_price' => 1400, 'price_type' => 'kg', 'stock_quantity' => 35, 'popularity_score' => 68,
-                'description' => 'Avocats crémeux pour salades et tartines.'],
+                'description' => 'Avocats crémeux pour salades et tartines.',
+                'image_url' => $this->img('photo-1671624749229-7d37826013b5')],
             ['name' => 'Pastèque', 'category' => 'Fruits', 'base_price' => 2000, 'price_type' => 'piece', 'stock_quantity' => 25, 'popularity_score' => 74,
-                'description' => 'Pastèque bien juteuse, parfaite pour la chaleur.'],
+                'description' => 'Pastèque bien juteuse, parfaite pour la chaleur.',
+                'image_url' => $this->img('photo-1587049352846-4a222e784d38')],
 
             // --------------------------------------------------- Légumes frais
             ['name' => 'Tomates locales', 'category' => 'Légumes du jour', 'base_price' => 1200, 'price_type' => 'kg', 'stock_quantity' => 80, 'is_bestseller' => true, 'popularity_score' => 95,
-                'description' => 'Tomates fraîches pour sauces, salades et plats mijotés.'],
+                'description' => 'Tomates fraîches pour sauces, salades et plats mijotés.',
+                'image_url' => $this->img('photo-1582284540020-8acbe03f4924')],
             ['name' => 'Oignons violets', 'category' => 'Légumes du jour', 'base_price' => 800, 'price_type' => 'kg', 'stock_quantity' => 95, 'is_bestseller' => true, 'popularity_score' => 93,
                 'description' => 'Oignons parfumés pour sauces, fritures et assaisonnement.',
                 'image_url' => $this->img('photo-1580201092675-a0a6a6cafbb1')],
             ['name' => 'Gombo frais', 'category' => 'Légumes du jour', 'base_price' => 1000, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 88,
-                'description' => 'Gombo tendre pour sauce gluante et accompagnements.'],
+                'description' => 'Gombo tendre pour sauce gluante et accompagnements.',
+                'image_url' => $this->img('photo-1425543103986-22abb7d7e8d2')],
             ['name' => 'Carottes', 'category' => 'Légumes du jour', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 70, 'popularity_score' => 72,
-                'description' => 'Carottes croquantes pour salades, riz et cuissons.'],
+                'description' => 'Carottes croquantes pour salades, riz et cuissons.',
+                'image_url' => $this->img('photo-1633380110125-f6e685676160')],
             ['name' => 'Grande morelle (fotètè)', 'category' => 'Légumes du jour', 'base_price' => 500, 'price_type' => 'piece', 'stock_quantity' => 50, 'popularity_score' => 80,
                 'description' => 'Botte de feuilles fraîches pour sauces traditionnelles.'],
             ['name' => 'Aubergine africaine (gboma)', 'category' => 'Légumes du jour', 'base_price' => 700, 'price_type' => 'kg', 'stock_quantity' => 55, 'popularity_score' => 78,
                 'description' => 'Aubergines locales pour sauces et ragoûts.'],
             ['name' => 'Chou pommé', 'category' => 'Légumes du jour', 'base_price' => 800, 'price_type' => 'piece', 'stock_quantity' => 40, 'popularity_score' => 63,
-                'description' => 'Chou frais pour salades, riz sauté et accompagnements.'],
+                'description' => 'Chou frais pour salades, riz sauté et accompagnements.',
+                'image_url' => $this->img('photo-1611105637889-3afd7295bdbf')],
 
             // ----------------------------------------------------- Tubercules
             ['name' => 'Igname de Dassa', 'category' => 'Tubercules & plantain', 'base_price' => 1800, 'price_type' => 'kg', 'stock_quantity' => 45, 'is_bestseller' => true, 'popularity_score' => 96,
@@ -187,11 +211,14 @@ class CatalogSeeder extends Seeder
                 'description' => 'Plantain mûr pour alloco, friture ou accompagnement.',
                 'image_url' => $this->img('photo-1603833665858-e61d17a86224')],
             ['name' => 'Manioc frais', 'category' => 'Tubercules & plantain', 'base_price' => 950, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 84,
-                'description' => 'Manioc pour gari, tapioca, foutou ou accompagnements.'],
+                'description' => 'Manioc pour gari, tapioca, foutou ou accompagnements.',
+                'image_url' => $this->img('photo-1757283961570-682154747d9c')],
             ['name' => 'Patate douce', 'category' => 'Tubercules & plantain', 'base_price' => 1000, 'price_type' => 'kg', 'stock_quantity' => 65, 'popularity_score' => 75,
-                'description' => 'Patate douce sucrée, à bouillir ou à frire.'],
+                'description' => 'Patate douce sucrée, à bouillir ou à frire.',
+                'image_url' => $this->img('photo-1730815048561-45df6f7f331d')],
             ['name' => 'Taro', 'category' => 'Tubercules & plantain', 'base_price' => 1100, 'price_type' => 'kg', 'stock_quantity' => 30, 'popularity_score' => 61,
-                'description' => 'Taro pour sauces épaisses et plats traditionnels.'],
+                'description' => 'Taro pour sauces épaisses et plats traditionnels.',
+                'image_url' => $this->img('photo-1757283961544-e161ac41b201')],
 
             // ------------------------------------- Céréales & légumineuses
             ['name' => 'Riz parfumé', 'category' => 'Céréales & légumineuses', 'base_price' => 5200, 'price_type' => 'bag', 'stock_quantity' => 60, 'is_bestseller' => true, 'popularity_score' => 94,
@@ -204,11 +231,13 @@ class CatalogSeeder extends Seeder
                 'description' => 'Farine de maïs pour amiwo, akassa et pâte.',
                 'image_url' => $this->img('photo-1627485937980-221c88ac04f9')],
             ['name' => 'Haricot blanc', 'category' => 'Céréales & légumineuses', 'base_price' => 1400, 'price_type' => 'kg', 'stock_quantity' => 75, 'popularity_score' => 92,
-                'description' => 'Haricot propre et trié, parfait pour atassi et abobo.'],
+                'description' => 'Haricot propre et trié, parfait pour atassi et abobo.',
+                'image_url' => $this->img('photo-1613728913084-090a0d106c3a')],
             ['name' => 'Tapioca', 'category' => 'Céréales & légumineuses', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 50, 'popularity_score' => 66,
                 'description' => 'Tapioca pour bouillies, desserts et petits-déjeuners.'],
             ['name' => 'Arachides crues', 'category' => 'Céréales & légumineuses', 'base_price' => 1300, 'price_type' => 'kg', 'stock_quantity' => 55, 'popularity_score' => 73,
-                'description' => 'Arachides à griller ou à transformer en pâte.'],
+                'description' => 'Arachides à griller ou à transformer en pâte.',
+                'image_url' => $this->img('photo-1549978113-29eb25c8177f')],
 
             // ------------------------------------------- Viandes & poissons
             ['name' => 'Poisson fumé', 'category' => 'Poissons & fruits de mer', 'base_price' => 1800, 'price_type' => 'piece', 'stock_quantity' => 34, 'is_bestseller' => true, 'popularity_score' => 90,
@@ -224,11 +253,13 @@ class CatalogSeeder extends Seeder
                 'description' => 'Boîtes de sardines pour gari foto et repas rapides.',
                 'image_url' => $this->img('photo-1559742811-822873691df8')],
             ['name' => 'Tilapia frais', 'category' => 'Poissons & fruits de mer', 'base_price' => 2500, 'price_type' => 'kg', 'stock_quantity' => 28, 'popularity_score' => 85,
-                'description' => 'Tilapia du jour, à griller ou en sauce.'],
+                'description' => 'Tilapia du jour, à griller ou en sauce.',
+                'image_url' => $this->img('photo-1783068085338-e8f0b1ff040f')],
             ['name' => 'Crevettes séchées', 'category' => 'Poissons & fruits de mer', 'base_price' => 2000, 'price_type' => 'cup', 'stock_quantity' => 40, 'popularity_score' => 79,
                 'description' => 'Crevettes séchées pour relever sauces et bouillons.'],
             ['name' => 'Viande de bœuf', 'category' => 'Viandes & œufs', 'base_price' => 3500, 'price_type' => 'kg', 'stock_quantity' => 25, 'popularity_score' => 82,
-                'description' => 'Morceaux de bœuf pour ragoûts, brochettes et sauces.'],
+                'description' => 'Morceaux de bœuf pour ragoûts, brochettes et sauces.',
+                'image_url' => $this->img('photo-1690983325551-b922137727be')],
 
             // ------------------------------------------ Épices & condiments
             ['name' => 'Piment rouge frais', 'category' => 'Condiments & épices', 'base_price' => 500, 'price_type' => 'cup', 'stock_quantity' => 120, 'popularity_score' => 86,
@@ -238,13 +269,16 @@ class CatalogSeeder extends Seeder
                 'description' => 'Botte de menthe fraîche pour jus, salades et infusions.',
                 'image_url' => $this->img('photo-1628556270448-4d4e4148e1b1')],
             ['name' => 'Ail frais', 'category' => 'Condiments & épices', 'base_price' => 700, 'price_type' => 'cup', 'stock_quantity' => 85, 'popularity_score' => 84,
-                'description' => 'Gousses d’ail pour marinades, sauces et assaisonnements.'],
+                'description' => 'Gousses d’ail pour marinades, sauces et assaisonnements.',
+                'image_url' => $this->img('photo-1540148426945-6cf22a6b2383')],
             ['name' => 'Gingembre frais', 'category' => 'Condiments & épices', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 80,
-                'description' => 'Racine de gingembre pour jus, sauces et infusions.'],
+                'description' => 'Racine de gingembre pour jus, sauces et infusions.',
+                'image_url' => $this->img('photo-1630623093145-f606591c2546')],
             ['name' => 'Afitin (moutarde locale)', 'category' => 'Condiments & épices', 'base_price' => 500, 'price_type' => 'cup', 'stock_quantity' => 70, 'popularity_score' => 87,
                 'description' => 'Condiment fermenté béninois, indispensable aux sauces du terroir.'],
             ['name' => 'Poivre noir moulu', 'category' => 'Condiments & épices', 'base_price' => 600, 'price_type' => 'cup', 'stock_quantity' => 65, 'popularity_score' => 62,
-                'description' => 'Poivre moulu pour relever tous vos plats.'],
+                'description' => 'Poivre moulu pour relever tous vos plats.',
+                'image_url' => $this->img('photo-1649952052743-5e8f37c348c5')],
 
             // ---------------------------------------------- Huiles & sauces
             ['name' => 'Huile rouge', 'category' => 'Huiles & pâtes', 'base_price' => 1300, 'price_type' => 'bottle', 'stock_quantity' => 52, 'is_bestseller' => true, 'popularity_score' => 91,
@@ -257,7 +291,8 @@ class CatalogSeeder extends Seeder
                 'description' => 'Concentré de tomate pour sauces et plats mijotés.',
                 'image_url' => $this->img('photo-1472476443507-c7a5948772fc')],
             ['name' => 'Huile végétale', 'category' => 'Huiles & pâtes', 'base_price' => 1800, 'price_type' => 'bottle', 'stock_quantity' => 60, 'popularity_score' => 76,
-                'description' => 'Huile neutre pour fritures et cuisson du quotidien.'],
+                'description' => 'Huile neutre pour fritures et cuisson du quotidien.',
+                'image_url' => $this->img('photo-1666694890460-37ec16b0df47')],
             ['name' => 'Beurre de karité', 'category' => 'Huiles & pâtes', 'base_price' => 1500, 'price_type' => 'jar', 'stock_quantity' => 35, 'popularity_score' => 60,
                 'description' => 'Karité pur, pour la cuisine et les soins.'],
 
@@ -278,17 +313,34 @@ class CatalogSeeder extends Seeder
     }
 
     /** URL Unsplash normalisee (meme cadrage et meme qualite pour tout le catalogue). */
+    /**
+     * Chemin local d'une photo, servie par l'application elle-meme.
+     *
+     * Les fichiers vivent dans `frontend/public/products/`, nommes par leur
+     * identifiant Unsplash d'origine — la tracabilite vers la source est
+     * conservee sans avoir a maintenir une table de correspondance.
+     *
+     * Pourquoi local plutot que le CDN. Trois raisons, dans l'ordre.
+     *
+     * 1. La latence. Depuis Cotonou, chaque vignette impliquait un aller-retour
+     *    vers un serveur hors du continent. Une grille de six produits, c'etait
+     *    six allers-retours avant que la page ne soit lisible.
+     * 2. Le hors-ligne. L'application doit pouvoir etre montree et travaillee
+     *    sans connexion : des images distantes rendaient le catalogue vide.
+     * 3. La perennite. Une photo retiree d'Unsplash cassait une fiche produit
+     *    sans que personne ne s'en apercoive avant un client.
+     */
     private function img(string $photoId): string
     {
-        return "https://images.unsplash.com/{$photoId}?auto=format&fit=crop&w=1200&q=90";
+        return "/products/{$photoId}.jpg";
     }
 
     /**
-     * Derive une vignette (400px, qualite 70) de l'image principale.
-     * Gain reel sur connexion mobile : une carte produit passe de ~200 Ko a ~25 Ko.
+     * Vignette 400px pour les listes.
+     * Gain reel sur connexion mobile : une carte produit passe de ~200 Ko a ~30 Ko.
      */
     private function thumbnailFrom(string $imageUrl): string
     {
-        return str_replace(['w=1200', 'q=90'], ['w=400', 'q=70'], $imageUrl);
+        return str_replace('.jpg', '-thumb.jpg', $imageUrl);
     }
 }
