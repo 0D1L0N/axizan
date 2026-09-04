@@ -466,23 +466,33 @@ class PreparatorController extends Controller
             return;
         }
 
-        $bySpeciality = Supplier::active()
-            ->where('market_id', $marketId)
-            ->get()
-            ->keyBy(fn (Supplier $supplier) => mb_strtolower(trim((string) $supplier->speciality)));
-
         // Ordre de parcours stable : les etals dans l'ordre ou ils ont ete
         // enregistres, ce qui suit en general la disposition du marche.
-        $order = $bySpeciality->keys()->flip();
+        $suppliers = Supplier::active()
+            ->where('market_id', $marketId)
+            ->with('categories:id')
+            ->orderBy('id')
+            ->get();
+
+        // Une categorie est servie par le PREMIER etal qui la couvre : deux
+        // vendeuses proposent souvent les memes condiments, et renvoyer le
+        // preparateur tantot chez l'une tantot chez l'autre lui ferait
+        // traverser le marche deux fois pour rien.
+        $byCategory = [];
+
+        foreach ($suppliers as $rank => $supplier) {
+            foreach ($supplier->categories as $category) {
+                $byCategory[$category->id] ??= ['supplier' => $supplier->id, 'rank' => $rank];
+            }
+        }
 
         foreach ($orders as $orderModel) {
             foreach ($orderModel->items as $item) {
-                $speciality = mb_strtolower(trim((string) $item->product?->category?->name));
-                $match = $bySpeciality->get($speciality);
+                $match = $byCategory[$item->product?->category_id] ?? null;
 
-                $item->setAttribute('suggested_supplier_id', $match?->id);
+                $item->setAttribute('suggested_supplier_id', $match['supplier'] ?? null);
                 // Les lignes sans correspondance passent en fin de liste.
-                $item->setAttribute('pick_order', $order->get($speciality, 999));
+                $item->setAttribute('pick_order', $match['rank'] ?? 999);
             }
         }
     }

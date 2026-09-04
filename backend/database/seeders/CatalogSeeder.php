@@ -46,9 +46,81 @@ class CatalogSeeder extends Seeder
         }
     }
 
+    /**
+     * Categories calquees sur l'organisation reelle du marche beninois.
+     *
+     * Elles servent DEUX usages, et c'est ce qui a dicte le decoupage.
+     *
+     * Cote client, on compose un repas : un feculent qui fait le fond, la
+     * sauce autour. L'ordre suit donc celui de l'assiette, pas l'alphabet.
+     *
+     * Cote preparateur, ces memes categories routent vers les etals — un
+     * fournisseur declare les categories qu'il couvre, et la liste de retrait
+     * est triee dans l'ordre de parcours du marche. D'ou des categories qui
+     * epousent des ZONES : a Dantokpa, la poissonnerie et la boucherie sont
+     * deux endroits differents tenus par des gens differents. Les melanger,
+     * comme le faisait « Viandes & poissons », rendait le routage impossible.
+     *
+     * La FAO decrit la meme structure pour Cotonou : des vendeuses
+     * specialisees par produit, et huit familles de base — mais, riz, igname,
+     * gari, haricots, arachides, poisson.
+     * Voir https://www.fao.org/4/X6984F/x6984f05.htm
+     */
     private function categories(): array
     {
         return [
+            [
+                'name' => 'Tubercules & plantain',
+                'icon_emoji' => '🍠',
+                'description' => 'Igname, manioc, patate douce, taro et plantain — le fond du repas.',
+                'image_url' => $this->img('photo-1518977676601-b53f82aba655'),
+            ],
+            [
+                'name' => 'Céréales & légumineuses',
+                'icon_emoji' => '🌾',
+                'description' => 'Riz, farine de maïs, gari, tapioca, haricot et arachides.',
+                'image_url' => $this->img('photo-1536304993881-ff6e9eefa2a6'),
+            ],
+            [
+                'name' => 'Légumes du jour',
+                'icon_emoji' => '🥬',
+                'description' => 'Tomate, oignon, gombo, légumes-feuilles — choisis le matin même.',
+                'image_url' => $this->img('photo-1542838132-92c53300491e'),
+            ],
+            [
+                'name' => 'Condiments & épices',
+                'icon_emoji' => '🌶️',
+                'description' => 'Piment, ail, gingembre, afitin — ce qui fait le goût de la sauce.',
+                'image_url' => $this->img('photo-1596040033229-a9821ebd058d'),
+            ],
+            [
+                // Zone distincte de la boucherie, tenue par d'autres vendeuses :
+                // Dantokpa jouxte l'ocean, le poisson y a son propre quartier.
+                'name' => 'Poissons & fruits de mer',
+                'icon_emoji' => '🐟',
+                'description' => 'Tilapia, poisson fumé, crevettes séchées.',
+                'image_url' => $this->img('photo-1565680018434-b513d5e5fd47'),
+            ],
+            [
+                'name' => 'Viandes & œufs',
+                'icon_emoji' => '🍗',
+                'description' => 'Bœuf, poulet fermier et œufs.',
+                'image_url' => $this->img('photo-1607623814075-e51df1bdc82f'),
+            ],
+            [
+                'name' => 'Huiles & pâtes',
+                'icon_emoji' => '🫗',
+                'description' => 'Huile rouge, huile végétale, pâte d’arachide, karité.',
+                'image_url' => $this->img('photo-1474979266404-7eaacbcd87c5'),
+            ],
+            [
+                // Ce qui ne se retire pas a un etal mais s'achete en boutique :
+                // produit industriel, emballe, au prix affiche.
+                'name' => 'Épicerie & conserves',
+                'icon_emoji' => '🥫',
+                'description' => 'Tomate concentrée, sardines, eau minérale.',
+                'image_url' => $this->img('photo-1584385002340-d886f3a0f097'),
+            ],
             [
                 'name' => 'Fruits',
                 'icon_emoji' => '🍍',
@@ -56,46 +128,9 @@ class CatalogSeeder extends Seeder
                 'image_url' => $this->img('photo-1619566636858-adf3ef46400b'),
             ],
             [
-                'name' => 'Légumes frais',
-                'icon_emoji' => '🥬',
-                'description' => 'Tomates, gombo, oignons, légumes-feuilles et condiments frais.',
-                'image_url' => $this->img('photo-1542838132-92c53300491e'),
-            ],
-            [
-                'name' => 'Tubercules',
-                'icon_emoji' => '🍠',
-                'description' => 'Igname, manioc, patate douce, taro et plantain.',
-                'image_url' => $this->img('photo-1518977676601-b53f82aba655'),
-            ],
-            [
-                'name' => 'Céréales & légumineuses',
-                'icon_emoji' => '🌾',
-                'description' => 'Riz, maïs, haricots, gari, tapioca et arachides.',
-                'image_url' => $this->img('photo-1536304993881-ff6e9eefa2a6'),
-            ],
-            [
-                'name' => 'Viandes & poissons',
-                'icon_emoji' => '🐟',
-                'description' => 'Poulet, poisson fumé, tilapia, oeufs et fruits de mer.',
-                // L'ancienne image de cette categorie renvoyait 404 : remplacee par une image verifiee.
-                'image_url' => $this->img('photo-1565680018434-b513d5e5fd47'),
-            ],
-            [
-                'name' => 'Épices & condiments',
-                'icon_emoji' => '🌶️',
-                'description' => 'Piment, ail, gingembre, afitin et assaisonnements.',
-                'image_url' => $this->img('photo-1596040033229-a9821ebd058d'),
-            ],
-            [
-                'name' => 'Huiles & sauces',
-                'icon_emoji' => '🫙',
-                'description' => 'Huile rouge, huile végétale, tomate concentrée, pâte d’arachide.',
-                'image_url' => $this->img('photo-1474979266404-7eaacbcd87c5'),
-            ],
-            [
                 'name' => 'Boissons locales',
                 'icon_emoji' => '🥤',
-                'description' => 'Bissap, gingembre, baobab, tamarin et eau minérale.',
+                'description' => 'Bissap, gingembre, baobab et tamarin, pressés au Bénin.',
                 'image_url' => $this->img('photo-1544145945-f90425340c7e'),
             ],
         ];
@@ -128,34 +163,34 @@ class CatalogSeeder extends Seeder
                 'description' => 'Pastèque bien juteuse, parfaite pour la chaleur.'],
 
             // --------------------------------------------------- Légumes frais
-            ['name' => 'Tomates locales', 'category' => 'Légumes frais', 'base_price' => 1200, 'price_type' => 'kg', 'stock_quantity' => 80, 'is_bestseller' => true, 'popularity_score' => 95,
+            ['name' => 'Tomates locales', 'category' => 'Légumes du jour', 'base_price' => 1200, 'price_type' => 'kg', 'stock_quantity' => 80, 'is_bestseller' => true, 'popularity_score' => 95,
                 'description' => 'Tomates fraîches pour sauces, salades et plats mijotés.'],
-            ['name' => 'Oignons violets', 'category' => 'Légumes frais', 'base_price' => 800, 'price_type' => 'kg', 'stock_quantity' => 95, 'is_bestseller' => true, 'popularity_score' => 93,
+            ['name' => 'Oignons violets', 'category' => 'Légumes du jour', 'base_price' => 800, 'price_type' => 'kg', 'stock_quantity' => 95, 'is_bestseller' => true, 'popularity_score' => 93,
                 'description' => 'Oignons parfumés pour sauces, fritures et assaisonnement.',
                 'image_url' => $this->img('photo-1580201092675-a0a6a6cafbb1')],
-            ['name' => 'Gombo frais', 'category' => 'Légumes frais', 'base_price' => 1000, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 88,
+            ['name' => 'Gombo frais', 'category' => 'Légumes du jour', 'base_price' => 1000, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 88,
                 'description' => 'Gombo tendre pour sauce gluante et accompagnements.'],
-            ['name' => 'Carottes', 'category' => 'Légumes frais', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 70, 'popularity_score' => 72,
+            ['name' => 'Carottes', 'category' => 'Légumes du jour', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 70, 'popularity_score' => 72,
                 'description' => 'Carottes croquantes pour salades, riz et cuissons.'],
-            ['name' => 'Grande morelle (fotètè)', 'category' => 'Légumes frais', 'base_price' => 500, 'price_type' => 'piece', 'stock_quantity' => 50, 'popularity_score' => 80,
+            ['name' => 'Grande morelle (fotètè)', 'category' => 'Légumes du jour', 'base_price' => 500, 'price_type' => 'piece', 'stock_quantity' => 50, 'popularity_score' => 80,
                 'description' => 'Botte de feuilles fraîches pour sauces traditionnelles.'],
-            ['name' => 'Aubergine africaine (gboma)', 'category' => 'Légumes frais', 'base_price' => 700, 'price_type' => 'kg', 'stock_quantity' => 55, 'popularity_score' => 78,
+            ['name' => 'Aubergine africaine (gboma)', 'category' => 'Légumes du jour', 'base_price' => 700, 'price_type' => 'kg', 'stock_quantity' => 55, 'popularity_score' => 78,
                 'description' => 'Aubergines locales pour sauces et ragoûts.'],
-            ['name' => 'Chou pommé', 'category' => 'Légumes frais', 'base_price' => 800, 'price_type' => 'piece', 'stock_quantity' => 40, 'popularity_score' => 63,
+            ['name' => 'Chou pommé', 'category' => 'Légumes du jour', 'base_price' => 800, 'price_type' => 'piece', 'stock_quantity' => 40, 'popularity_score' => 63,
                 'description' => 'Chou frais pour salades, riz sauté et accompagnements.'],
 
             // ----------------------------------------------------- Tubercules
-            ['name' => 'Igname de Dassa', 'category' => 'Tubercules', 'base_price' => 1800, 'price_type' => 'kg', 'stock_quantity' => 45, 'is_bestseller' => true, 'popularity_score' => 96,
+            ['name' => 'Igname de Dassa', 'category' => 'Tubercules & plantain', 'base_price' => 1800, 'price_type' => 'kg', 'stock_quantity' => 45, 'is_bestseller' => true, 'popularity_score' => 96,
                 'description' => 'Tubercule ferme pour igname pilée, friture ou ragoût.',
                 'image_url' => $this->img('photo-1518977676601-b53f82aba655')],
-            ['name' => 'Banane plantain', 'category' => 'Tubercules', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 120, 'popularity_score' => 89,
+            ['name' => 'Banane plantain', 'category' => 'Tubercules & plantain', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 120, 'popularity_score' => 89,
                 'description' => 'Plantain mûr pour alloco, friture ou accompagnement.',
                 'image_url' => $this->img('photo-1603833665858-e61d17a86224')],
-            ['name' => 'Manioc frais', 'category' => 'Tubercules', 'base_price' => 950, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 84,
+            ['name' => 'Manioc frais', 'category' => 'Tubercules & plantain', 'base_price' => 950, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 84,
                 'description' => 'Manioc pour gari, tapioca, foutou ou accompagnements.'],
-            ['name' => 'Patate douce', 'category' => 'Tubercules', 'base_price' => 1000, 'price_type' => 'kg', 'stock_quantity' => 65, 'popularity_score' => 75,
+            ['name' => 'Patate douce', 'category' => 'Tubercules & plantain', 'base_price' => 1000, 'price_type' => 'kg', 'stock_quantity' => 65, 'popularity_score' => 75,
                 'description' => 'Patate douce sucrée, à bouillir ou à frire.'],
-            ['name' => 'Taro', 'category' => 'Tubercules', 'base_price' => 1100, 'price_type' => 'kg', 'stock_quantity' => 30, 'popularity_score' => 61,
+            ['name' => 'Taro', 'category' => 'Tubercules & plantain', 'base_price' => 1100, 'price_type' => 'kg', 'stock_quantity' => 30, 'popularity_score' => 61,
                 'description' => 'Taro pour sauces épaisses et plats traditionnels.'],
 
             // ------------------------------------- Céréales & légumineuses
@@ -176,54 +211,54 @@ class CatalogSeeder extends Seeder
                 'description' => 'Arachides à griller ou à transformer en pâte.'],
 
             // ------------------------------------------- Viandes & poissons
-            ['name' => 'Poisson fumé', 'category' => 'Viandes & poissons', 'base_price' => 1800, 'price_type' => 'piece', 'stock_quantity' => 34, 'is_bestseller' => true, 'popularity_score' => 90,
+            ['name' => 'Poisson fumé', 'category' => 'Poissons & fruits de mer', 'base_price' => 1800, 'price_type' => 'piece', 'stock_quantity' => 34, 'is_bestseller' => true, 'popularity_score' => 90,
                 'description' => 'Poisson fumé pour sauces, atassi et plats traditionnels.',
                 'image_url' => $this->img('photo-1565680018434-b513d5e5fd47')],
-            ['name' => 'Poulet fermier', 'category' => 'Viandes & poissons', 'base_price' => 3200, 'price_type' => 'piece', 'stock_quantity' => 30, 'popularity_score' => 87,
+            ['name' => 'Poulet fermier', 'category' => 'Viandes & œufs', 'base_price' => 3200, 'price_type' => 'piece', 'stock_quantity' => 30, 'popularity_score' => 87,
                 'description' => 'Poulet entier pour grillades, sauces et riz au gras.',
                 'image_url' => $this->img('photo-1587593810167-a84920ea0781')],
-            ['name' => 'Oeufs fermiers', 'category' => 'Viandes & poissons', 'base_price' => 1500, 'price_type' => 'piece', 'stock_quantity' => 60, 'popularity_score' => 83,
+            ['name' => 'Oeufs fermiers', 'category' => 'Viandes & œufs', 'base_price' => 1500, 'price_type' => 'piece', 'stock_quantity' => 60, 'popularity_score' => 83,
                 'description' => 'Plateau d’oeufs frais pour gari foto et omelettes.',
                 'image_url' => $this->img('photo-1506976785307-8732e854ad03')],
-            ['name' => 'Sardines', 'category' => 'Viandes & poissons', 'base_price' => 1200, 'price_type' => 'jar', 'stock_quantity' => 55, 'popularity_score' => 72,
+            ['name' => 'Sardines', 'category' => 'Épicerie & conserves', 'base_price' => 1200, 'price_type' => 'jar', 'stock_quantity' => 55, 'popularity_score' => 72,
                 'description' => 'Boîtes de sardines pour gari foto et repas rapides.',
                 'image_url' => $this->img('photo-1559742811-822873691df8')],
-            ['name' => 'Tilapia frais', 'category' => 'Viandes & poissons', 'base_price' => 2500, 'price_type' => 'kg', 'stock_quantity' => 28, 'popularity_score' => 85,
+            ['name' => 'Tilapia frais', 'category' => 'Poissons & fruits de mer', 'base_price' => 2500, 'price_type' => 'kg', 'stock_quantity' => 28, 'popularity_score' => 85,
                 'description' => 'Tilapia du jour, à griller ou en sauce.'],
-            ['name' => 'Crevettes séchées', 'category' => 'Viandes & poissons', 'base_price' => 2000, 'price_type' => 'cup', 'stock_quantity' => 40, 'popularity_score' => 79,
+            ['name' => 'Crevettes séchées', 'category' => 'Poissons & fruits de mer', 'base_price' => 2000, 'price_type' => 'cup', 'stock_quantity' => 40, 'popularity_score' => 79,
                 'description' => 'Crevettes séchées pour relever sauces et bouillons.'],
-            ['name' => 'Viande de bœuf', 'category' => 'Viandes & poissons', 'base_price' => 3500, 'price_type' => 'kg', 'stock_quantity' => 25, 'popularity_score' => 82,
+            ['name' => 'Viande de bœuf', 'category' => 'Viandes & œufs', 'base_price' => 3500, 'price_type' => 'kg', 'stock_quantity' => 25, 'popularity_score' => 82,
                 'description' => 'Morceaux de bœuf pour ragoûts, brochettes et sauces.'],
 
             // ------------------------------------------ Épices & condiments
-            ['name' => 'Piment rouge frais', 'category' => 'Épices & condiments', 'base_price' => 500, 'price_type' => 'cup', 'stock_quantity' => 120, 'popularity_score' => 86,
+            ['name' => 'Piment rouge frais', 'category' => 'Condiments & épices', 'base_price' => 500, 'price_type' => 'cup', 'stock_quantity' => 120, 'popularity_score' => 86,
                 'description' => 'Piment fort pour sauces béninoises et marinades.',
                 'image_url' => $this->img('photo-1583119022894-919a68a3d0e3')],
-            ['name' => 'Menthe fraîche', 'category' => 'Épices & condiments', 'base_price' => 600, 'price_type' => 'piece', 'stock_quantity' => 40, 'popularity_score' => 64,
+            ['name' => 'Menthe fraîche', 'category' => 'Condiments & épices', 'base_price' => 600, 'price_type' => 'piece', 'stock_quantity' => 40, 'popularity_score' => 64,
                 'description' => 'Botte de menthe fraîche pour jus, salades et infusions.',
                 'image_url' => $this->img('photo-1628556270448-4d4e4148e1b1')],
-            ['name' => 'Ail frais', 'category' => 'Épices & condiments', 'base_price' => 700, 'price_type' => 'cup', 'stock_quantity' => 85, 'popularity_score' => 84,
+            ['name' => 'Ail frais', 'category' => 'Condiments & épices', 'base_price' => 700, 'price_type' => 'cup', 'stock_quantity' => 85, 'popularity_score' => 84,
                 'description' => 'Gousses d’ail pour marinades, sauces et assaisonnements.'],
-            ['name' => 'Gingembre frais', 'category' => 'Épices & condiments', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 80,
+            ['name' => 'Gingembre frais', 'category' => 'Condiments & épices', 'base_price' => 900, 'price_type' => 'kg', 'stock_quantity' => 60, 'popularity_score' => 80,
                 'description' => 'Racine de gingembre pour jus, sauces et infusions.'],
-            ['name' => 'Afitin (moutarde locale)', 'category' => 'Épices & condiments', 'base_price' => 500, 'price_type' => 'cup', 'stock_quantity' => 70, 'popularity_score' => 87,
+            ['name' => 'Afitin (moutarde locale)', 'category' => 'Condiments & épices', 'base_price' => 500, 'price_type' => 'cup', 'stock_quantity' => 70, 'popularity_score' => 87,
                 'description' => 'Condiment fermenté béninois, indispensable aux sauces du terroir.'],
-            ['name' => 'Poivre noir moulu', 'category' => 'Épices & condiments', 'base_price' => 600, 'price_type' => 'cup', 'stock_quantity' => 65, 'popularity_score' => 62,
+            ['name' => 'Poivre noir moulu', 'category' => 'Condiments & épices', 'base_price' => 600, 'price_type' => 'cup', 'stock_quantity' => 65, 'popularity_score' => 62,
                 'description' => 'Poivre moulu pour relever tous vos plats.'],
 
             // ---------------------------------------------- Huiles & sauces
-            ['name' => 'Huile rouge', 'category' => 'Huiles & sauces', 'base_price' => 1300, 'price_type' => 'bottle', 'stock_quantity' => 52, 'is_bestseller' => true, 'popularity_score' => 91,
+            ['name' => 'Huile rouge', 'category' => 'Huiles & pâtes', 'base_price' => 1300, 'price_type' => 'bottle', 'stock_quantity' => 52, 'is_bestseller' => true, 'popularity_score' => 91,
                 'description' => 'Huile de palme locale pour sauces, atassi et gari foto.',
                 'image_url' => $this->img('photo-1474979266404-7eaacbcd87c5')],
-            ['name' => 'Pâte d’arachide', 'category' => 'Huiles & sauces', 'base_price' => 1600, 'price_type' => 'jar', 'stock_quantity' => 40, 'popularity_score' => 78,
+            ['name' => 'Pâte d’arachide', 'category' => 'Huiles & pâtes', 'base_price' => 1600, 'price_type' => 'jar', 'stock_quantity' => 40, 'popularity_score' => 78,
                 'description' => 'Base riche pour sauce arachide et plats familiaux.',
                 'image_url' => $this->img('photo-1607623814075-e51df1bdc82f')],
-            ['name' => 'Tomate concentrée', 'category' => 'Huiles & sauces', 'base_price' => 900, 'price_type' => 'jar', 'stock_quantity' => 70, 'popularity_score' => 74,
+            ['name' => 'Tomate concentrée', 'category' => 'Épicerie & conserves', 'base_price' => 900, 'price_type' => 'jar', 'stock_quantity' => 70, 'popularity_score' => 74,
                 'description' => 'Concentré de tomate pour sauces et plats mijotés.',
                 'image_url' => $this->img('photo-1472476443507-c7a5948772fc')],
-            ['name' => 'Huile végétale', 'category' => 'Huiles & sauces', 'base_price' => 1800, 'price_type' => 'bottle', 'stock_quantity' => 60, 'popularity_score' => 76,
+            ['name' => 'Huile végétale', 'category' => 'Huiles & pâtes', 'base_price' => 1800, 'price_type' => 'bottle', 'stock_quantity' => 60, 'popularity_score' => 76,
                 'description' => 'Huile neutre pour fritures et cuisson du quotidien.'],
-            ['name' => 'Beurre de karité', 'category' => 'Huiles & sauces', 'base_price' => 1500, 'price_type' => 'jar', 'stock_quantity' => 35, 'popularity_score' => 60,
+            ['name' => 'Beurre de karité', 'category' => 'Huiles & pâtes', 'base_price' => 1500, 'price_type' => 'jar', 'stock_quantity' => 35, 'popularity_score' => 60,
                 'description' => 'Karité pur, pour la cuisine et les soins.'],
 
             // --------------------------------------------- Boissons locales
@@ -237,7 +272,7 @@ class CatalogSeeder extends Seeder
                 'description' => 'Boisson au pain de singe, douce et nourrissante.'],
             ['name' => 'Jus de tamarin', 'category' => 'Boissons locales', 'base_price' => 800, 'price_type' => 'piece', 'stock_quantity' => 60, 'popularity_score' => 71,
                 'description' => 'Jus acidulé de tamarin, très rafraîchissant.'],
-            ['name' => 'Eau minérale 1,5 L', 'category' => 'Boissons locales', 'base_price' => 300, 'price_type' => 'bottle', 'stock_quantity' => 200, 'popularity_score' => 69,
+            ['name' => 'Eau minérale 1,5 L', 'category' => 'Épicerie & conserves', 'base_price' => 300, 'price_type' => 'bottle', 'stock_quantity' => 200, 'popularity_score' => 69,
                 'description' => 'Bouteille d’eau minérale pour la maison.'],
         ];
     }

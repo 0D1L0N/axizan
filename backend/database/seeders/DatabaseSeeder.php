@@ -43,12 +43,32 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Dantokpa',
                 'city' => 'Cotonou',
                 'zones' => ['Cotonou Centre'],
+                /*
+                 * `covers` liste les categories reellement servies par l'etal :
+                 * c'est ce qui route le preparateur. Une vendeuse de legumes
+                 * propose presque toujours les condiments qui vont avec, d'ou
+                 * plusieurs categories par etal.
+                 *
+                 * L'ORDRE des etals fait l'ordre de parcours du marche : le
+                 * preparateur le traverse une fois, sans revenir sur ses pas.
+                 */
                 'suppliers' => [
-                    ['name' => 'Étal Aïssatou', 'stall' => 'Allée B12', 'speciality' => 'Légumes frais'],
-                    ['name' => 'Chez Rachidi', 'stall' => 'Allée C04', 'speciality' => 'Tubercules'],
-                    ['name' => 'Poissonnerie Codjo', 'stall' => 'Halle poissons', 'speciality' => 'Viandes & poissons'],
-                    ['name' => 'Grains du Nord', 'stall' => 'Allée A21', 'speciality' => 'Céréales & légumineuses'],
-                    ['name' => 'Huilerie Sèdjro', 'stall' => 'Allée D07', 'speciality' => 'Huiles & sauces'],
+                    ['name' => 'Étal Aïssatou', 'stall' => 'Allée B12', 'speciality' => 'Légumes et condiments',
+                        'covers' => ['Légumes du jour', 'Condiments & épices']],
+                    ['name' => 'Chez Rachidi', 'stall' => 'Allée C04', 'speciality' => 'Tubercules',
+                        'covers' => ['Tubercules & plantain']],
+                    ['name' => 'Grains du Nord', 'stall' => 'Allée A21', 'speciality' => 'Céréales et légumineuses',
+                        'covers' => ['Céréales & légumineuses']],
+                    ['name' => 'Poissonnerie Codjo', 'stall' => 'Halle poissons', 'speciality' => 'Poissons et fruits de mer',
+                        'covers' => ['Poissons & fruits de mer']],
+                    ['name' => 'Boucherie Zinsou', 'stall' => 'Halle viandes', 'speciality' => 'Viandes et œufs',
+                        'covers' => ['Viandes & œufs']],
+                    ['name' => 'Huilerie Sèdjro', 'stall' => 'Allée D07', 'speciality' => 'Huiles et pâtes',
+                        'covers' => ['Huiles & pâtes']],
+                    ['name' => 'Fruits Dossou', 'stall' => 'Allée E02', 'speciality' => 'Fruits de saison',
+                        'covers' => ['Fruits']],
+                    ['name' => 'Boutique Mensah', 'stall' => 'Entrée nord', 'speciality' => 'Épicerie et boissons',
+                        'covers' => ['Épicerie & conserves', 'Boissons locales']],
                 ],
             ],
             [
@@ -56,9 +76,12 @@ class DatabaseSeeder extends Seeder
                 'city' => 'Porto-Novo',
                 'zones' => ['Porto-Novo'],
                 'suppliers' => [
-                    ['name' => 'Étal Bernadette', 'stall' => 'Rangée 3', 'speciality' => 'Légumes frais'],
-                    ['name' => 'Fruits Adjovi', 'stall' => 'Rangée 1', 'speciality' => 'Fruits'],
-                    ['name' => 'Épices Kpogli', 'stall' => 'Rangée 7', 'speciality' => 'Épices & condiments'],
+                    ['name' => 'Étal Bernadette', 'stall' => 'Rangée 3', 'speciality' => 'Légumes et tubercules',
+                        'covers' => ['Légumes du jour', 'Tubercules & plantain']],
+                    ['name' => 'Fruits Adjovi', 'stall' => 'Rangée 1', 'speciality' => 'Fruits de saison',
+                        'covers' => ['Fruits']],
+                    ['name' => 'Épices Kpogli', 'stall' => 'Rangée 7', 'speciality' => 'Condiments et épices',
+                        'covers' => ['Condiments & épices']],
                 ],
             ],
         ];
@@ -98,9 +121,19 @@ class DatabaseSeeder extends Seeder
             $market->zones()->sync($zoneIds);
 
             foreach ($data['suppliers'] as $supplier) {
-                Supplier::updateOrCreate(
+                $covers = $supplier['covers'] ?? [];
+                unset($supplier['covers']);
+
+                $record = Supplier::updateOrCreate(
                     ['market_id' => $market->id, 'name' => $supplier['name']],
                     $supplier + ['is_active' => true]
+                );
+
+                // Ce rattachement est ce qui route le preparateur vers le bon
+                // etal : sans lui, il recoit une liste sans suggestion et dans
+                // un ordre arbitraire.
+                $record->categories()->sync(
+                    \App\Models\Category::whereIn('name', $covers)->pluck('id')
                 );
             }
         }

@@ -527,3 +527,61 @@ réapparaîtront plus jamais dans un point, cette action ne s'annule pas ».
 Les frais FedaPay (1,80 % par transaction) n'entrent toujours pas dans
 `Order::grossMargin()`. Avec le coût d'achat désormais connu, la marge réelle
 devient calculable — c'est le prochain chantier naturel.
+
+## Catalogue recatégorisé sur le marché réel (5 sept. 2026)
+
+**164 tests, 708 assertions.**
+
+Les catégories servaient deux usages qui tiraient dans des sens différents :
+la navigation du client, et le **routage du préparateur** vers les étals
+(`suggestSuppliers`). Le découpage a été refait pour servir les deux.
+
+### Ce qui n'allait pas
+
+**« Viandes & poissons » mélangeait deux zones distinctes.** À Dantokpa, la
+poissonnerie et la boucherie sont deux endroits différents, tenus par des
+personnes différentes. On ne peut pas envoyer un préparateur « au rayon
+viandes-et-poissons » : ça n'existe pas.
+
+**« Huiles & sauces » réunissait deux mondes** : l'huile de palme retirée à un
+étal, et la tomate concentrée achetée en boutique — produit industriel,
+emballé, au prix affiché. Le beurre de karité y traînait aussi, alors qu'il
+n'entre dans aucune sauce.
+
+### Le nouveau découpage
+
+Dix catégories, dans l'ordre de l'assiette — le féculent qui fait le fond, la
+sauce autour :
+
+Tubercules & plantain · Céréales & légumineuses · Légumes du jour ·
+Condiments & épices · Poissons & fruits de mer · Viandes & œufs ·
+Huiles & pâtes · Épicerie & conserves · Fruits · Boissons locales
+
+Cadré sur la description FAO de la distribution alimentaire à Cotonou : des
+vendeuses spécialisées par produit, et huit familles de base — maïs, riz,
+igname, gari, haricots, arachides, poisson.
+Voir https://www.fao.org/4/X6984F/x6984f05.htm
+
+### Le bug latent trouvé en chemin
+
+Le routage vers les étals comparait le **nom** de la catégorie à une chaîne
+libre saisie dans `suppliers.speciality`. Deux textes qui devaient rester
+identiques à la lettre près, dans deux tables, sans contrainte. Renommer une
+catégorie cassait le routage **en silence** — le préparateur perdait ses
+suggestions d'étal sans qu'aucune erreur n'apparaisse nulle part.
+
+Table `category_supplier` : un étal déclare les catégories qu'il couvre,
+plusieurs comme sur le terrain (une vendeuse de légumes propose presque
+toujours les condiments qui vont avec). `speciality` survit comme libellé
+affiché, plus comme clé de jointure.
+
+Une catégorie est servie par le **premier** étal qui la couvre : deux vendeuses
+proposent souvent les mêmes condiments, et renvoyer le préparateur tantôt chez
+l'une tantôt chez l'autre lui ferait traverser le marché deux fois.
+
+Deux tests verrouillent le parcours : la liste de retrait suit l'ordre des
+étals, et un article que personne ne couvre tombe en fin de liste sans
+suggestion — visible, plutôt que cherché au mauvais endroit.
+
+Le marché de démonstration passe de 5 à 8 étals : la boucherie, les fruits et
+la boutique d'épicerie manquaient.

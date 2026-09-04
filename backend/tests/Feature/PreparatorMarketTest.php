@@ -360,9 +360,13 @@ class PreparatorMarketTest extends TestCase
         [$zone] = $this->createZoneWithSlot();
         [$market, $supplier] = $this->createMarketFor($zone);
 
-        // La specialite de l'etal porte le nom d'une categorie produit :
-        // c'est ce rapprochement qui evite un choix par ligne.
-        $category = Category::create(['name' => $supplier->speciality]);
+        // L'etal declare les categories qu'il couvre : c'est ce rattachement
+        // qui evite un choix par ligne. Auparavant le rapprochement se faisait
+        // en comparant deux chaines libres — renommer une categorie cassait le
+        // routage sans qu'aucune erreur n'apparaisse.
+        $category = Category::create(['name' => 'Légumes du jour']);
+        $supplier->categories()->attach($category->id);
+
         $product = $this->createProduct();
         $product->update(['category_id' => $category->id]);
 
@@ -374,6 +378,66 @@ class PreparatorMarketTest extends TestCase
         $item = $this->getJson('/api/v1/preparateur/orders/mine')->assertOk()->json('data.0.items.0');
 
         $this->assertSame($supplier->id, $item['suggested_supplier_id']);
+    }
+
+    public function test_the_pick_list_follows_the_walk_through_the_market(): void
+    {
+        [$zone] = $this->createZoneWithSlot();
+        [$market, $first] = $this->createMarketFor($zone);
+
+        $legumes = Category::create(['name' => 'Légumes du jour']);
+        $poissons = Category::create(['name' => 'Poissons & fruits de mer']);
+
+        // L'ordre d'enregistrement des etals fait l'ordre de parcours.
+        $first->categories()->attach($legumes->id);
+        $last = \App\Models\Supplier::create([
+            'market_id' => $market->id,
+            'name' => 'Poissonnerie',
+            'stall' => 'Halle poissons',
+            'is_active' => true,
+        ]);
+        $last->categories()->attach($poissons->id);
+
+        $tilapia = $this->createProduct(['name' => 'Tilapia']);
+        $tilapia->update(['category_id' => $poissons->id]);
+        $tomate = $this->createProduct(['name' => 'Tomate']);
+        $tomate->update(['category_id' => $legumes->id]);
+
+        // Commande dans l'ordre inverse du marche : la liste doit le corriger.
+        $order = $this->paidOrder($this->createClient(), $zone, [$tilapia, $tomate]);
+
+        Sanctum::actingAs($this->createPreparateurFor($market), ['*']);
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/accept")->assertOk();
+
+        $items = collect($this->getJson('/api/v1/preparateur/orders/mine')->json('data.0.items'))
+            ->sortBy('pick_order')
+            ->values();
+
+        // Le preparateur traverse le marche une fois, sans revenir sur ses pas.
+        $this->assertSame($first->id, $items[0]['suggested_supplier_id']);
+        $this->assertSame($last->id, $items[1]['suggested_supplier_id']);
+    }
+
+    public function test_an_article_no_stall_covers_falls_to_the_end_of_the_list(): void
+    {
+        [$zone] = $this->createZoneWithSlot();
+        [$market] = $this->createMarketFor($zone);
+
+        // Aucun etal ne couvre cette categorie : l'article ne disparait pas,
+        // il passe en fin de liste sans suggestion. Le preparateur le voit et
+        // se debrouille, au lieu de le chercher au mauvais endroit.
+        $product = $this->createProduct();
+        $product->update(['category_id' => Category::create(['name' => 'Épicerie & conserves'])->id]);
+
+        $order = $this->paidOrder($this->createClient(), $zone, [$product]);
+
+        Sanctum::actingAs($this->createPreparateurFor($market), ['*']);
+        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/accept")->assertOk();
+
+        $item = $this->getJson('/api/v1/preparateur/orders/mine')->json('data.0.items.0');
+
+        $this->assertNull($item['suggested_supplier_id']);
+        $this->assertSame(999, $item['pick_order']);
     }
 
     public function test_the_depot_is_given_to_the_preparateur(): void

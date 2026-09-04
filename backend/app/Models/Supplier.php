@@ -19,6 +19,23 @@ class Supplier extends Model
         return $this->belongsTo(Market::class);
     }
 
+    /**
+     * Categories couvertes par cet etal.
+     *
+     * C'est ce qui route le preparateur. Auparavant le rapprochement se faisait
+     * en comparant le NOM de la categorie a la chaine libre `speciality` :
+     * deux textes qui devaient rester identiques a la lettre pres, dans deux
+     * tables, sans contrainte. Renommer une categorie cassait le routage en
+     * silence. `speciality` reste le libelle affiche, plus la cle de jointure.
+     *
+     * Plusieurs categories par etal, comme sur le terrain : une vendeuse de
+     * legumes propose presque toujours les condiments qui vont avec.
+     */
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class);
+    }
+
     /** Lignes de commande retirees chez ce fournisseur — base du futur point. */
     public function orderItems()
     {
