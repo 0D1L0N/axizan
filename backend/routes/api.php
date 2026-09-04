@@ -97,6 +97,17 @@ Route::prefix('v1')->group(function () {
             Route::post('/{id}/reorder', [OrderController::class, 'reorder']);
             Route::post('/{id}/declare-payment', [OrderController::class, 'declarePayment']);
             Route::post('/{id}/confirm-payment', [FedapayController::class, 'confirm']);
+
+            // Chaque demande fait SONNER un telephone, et rien n'oblige le
+            // numero saisi a etre celui du client. Sans limite, la route
+            // devient un outil de harcelement gratuit.
+            Route::post('/{id}/request-payment', [FedapayController::class, 'request'])
+                ->middleware('throttle:5,1');
+
+            // Sondage pendant que le client confirme sur son telephone :
+            // frequent par nature, mais pas illimite.
+            Route::get('/{id}/payment-status', [FedapayController::class, 'status'])
+                ->middleware('throttle:60,1');
             Route::patch('/{id}/status', [OrderController::class, 'updateStatus']);
         });
 

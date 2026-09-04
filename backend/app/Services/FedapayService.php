@@ -23,6 +23,21 @@ use Illuminate\Support\Facades\Log;
  */
 class FedapayService
 {
+    /**
+     * Nos codes operateur -> modes FedaPay.
+     *
+     * Ces chaines sont imposees par FedaPay et n'ont rien d'intuitif :
+     * MTN Benin est `mtn_open` (et non `mtn`, qui n'existe pas), Celtiis est
+     * `sbin` — le nom de l'ancienne societe. Se tromper de mode renvoie une
+     * erreur de l'agregateur, pas un paiement rate silencieux, mais autant
+     * centraliser la correspondance ici.
+     */
+    public const MODES = [
+        'mtn' => 'mtn_open',
+        'moov' => 'moov',
+        'celtiis' => 'sbin',
+    ];
+
     public function __construct(private PaymentService $paymentService)
     {}
 
@@ -38,6 +53,108 @@ class FedapayService
     {
         FedaPay::setApiKey(config('payments.fedapay.secret_key'));
         FedaPay::setEnvironment(config('payments.fedapay.sandbox') ? 'sandbox' : 'live');
+    }
+
+    /**
+     * Declenche une demande de paiement Mobile Money sur le telephone du client.
+     *
+     * C'est le vrai parcours béninois : pas de page de paiement, pas de
+     * formulaire de carte. Le client saisit son numero, son telephone sonne
+     * avec une demande de confirmation, il tape son code, c'est fini. Sur un
+     * telephone d'entree de gamme avec une connexion capricieuse, cela vaut
+     * tous les modules de paiement du monde.
+     *
+     * Deux appels FedaPay : creer la transaction, puis la POUSSER vers
+     * l'operateur (`sendNow` = generer un jeton + envoyer). Sans le second,
+     * la transaction existe mais rien n'arrive sur le telephone.
+     *
+     * @return array{ok: bool, error: ?string, message: string, transaction_id: ?string}
+     */
+    public function requestPayment(Order $order, string $provider, string $phone): array
+    {
+        $mode = self::MODES[$provider] ?? null;
+
+        if (! $mode) {
+            return [
+                'ok' => false,
+                'error' => 'unsupported_provider',
+                'message' => 'Cet opérateur n’est pas pris en charge.',
+                'transaction_id' => null,
+            ];
+        }
+
+        $this->boot();
+
+        try {
+            $transaction = Transaction::create([
+                'description' => 'Axizán '.$order->order_number,
+                'amount' => (int) round((float) $order->total),
+                'currency' => ['iso' => 'XOF'],
+                // Rattache la notification a la commande sans dependre du
+                // texte de la description.
+                'custom_metadata' => ['order_number' => $order->order_number],
+                'customer' => array_filter([
+                    'firstname' => $order->client?->name,
+                    'email' => $order->client?->email,
+                    'phone_number' => ['number' => $this->localNumber($phone), 'country' => 'bj'],
+                ]),
+            ]);
+
+            // Enregistre l'identifiant AVANT la poussee : si l'envoi echoue ou
+            // si le processus meurt ici, le webhook pourra quand meme
+            // retrouver la commande par son transaction_id.
+            $order->payment?->update([
+                'payment_method' => 'fedapay',
+                'payment_provider' => $provider,
+                'transaction_id' => (string) $transaction->id,
+                'phone_number' => $phone,
+            ]);
+
+            $transaction->sendNow($mode, [
+                'phone_number' => ['number' => $this->localNumber($phone), 'country' => 'bj'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('FedaPay : demande de paiement refusée', [
+                'order' => $order->order_number,
+                'provider' => $provider,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'ok' => false,
+                'error' => 'request_failed',
+                // Le message de l'agregateur est en anglais et technique : on
+                // dit au client ce qu'il peut faire, pas ce qui a casse.
+                'message' => 'La demande n’a pas pu être envoyée. Vérifiez le numéro et réessayez.',
+                'transaction_id' => null,
+            ];
+        }
+
+        OrderEvent::record($order, 'payment.requested', reason: 'Demande Mobile Money envoyée', context: [
+            'provider' => $provider,
+            'transaction_id' => (string) $transaction->id,
+        ]);
+
+        return [
+            'ok' => true,
+            'error' => null,
+            'message' => 'Confirmez la demande sur votre téléphone.',
+            'transaction_id' => (string) $transaction->id,
+        ];
+    }
+
+    /**
+     * Numero au format attendu par FedaPay : la partie locale, sans indicatif.
+     *
+     * L'API accepte les deux formes, mais melanger « +229 01 97 00 00 00 » et
+     * « 97000000 » d'un appel a l'autre produit des rapprochements manques
+     * cote operateur.
+     */
+    private function localNumber(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        return preg_replace('/^229/', '', $digits) ?: $digits;
     }
 
     /**

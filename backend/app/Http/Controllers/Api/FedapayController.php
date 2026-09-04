@@ -29,6 +29,92 @@ class FedapayController extends Controller
     {}
 
     /**
+     * Demande de paiement Mobile Money : le telephone du client sonne.
+     *
+     * Aucune page de paiement, aucun formulaire de carte — le parcours normal
+     * au Benin. Le client saisit son numero ici, confirme sur son telephone,
+     * et c'est le webhook qui debloque la commande.
+     */
+    public function request(Request $request, $orderId)
+    {
+        $data = $request->validate([
+            'provider' => 'required|in:mtn,moov,celtiis',
+            'phone' => 'required|string|max:30',
+        ], [
+            'provider.in' => 'Choisissez MTN, Moov ou Celtiis.',
+            'phone.required' => 'Indiquez le numéro Mobile Money à débiter.',
+        ]);
+
+        $order = Order::with('payment', 'client')->find($orderId);
+
+        if (! $order || $order->client_id !== $request->user()->id) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
+
+        if (! $this->fedapay->isEnabled()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'fedapay_disabled',
+                'message' => 'Le paiement en ligne n’est pas activé.',
+            ], 503);
+        }
+
+        if ($order->payment_status === 'completed') {
+            return response()->json([
+                'success' => false,
+                'error' => 'already_paid',
+                'message' => 'Cette commande est déjà payée.',
+            ], 422);
+        }
+
+        $result = $this->fedapay->requestPayment($order, $data['provider'], $data['phone']);
+
+        return response()->json([
+            'success' => $result['ok'],
+            'error' => $result['error'],
+            'message' => $result['message'],
+            'data' => ['transaction_id' => $result['transaction_id']],
+        ], $result['ok'] ? 202 : 422);
+    }
+
+    /**
+     * Ou en est le paiement ?
+     *
+     * Le webhook reste la source de verite, mais il ne suffit pas : en
+     * developpement il n'y a pas d'URL publique, et en production une
+     * notification peut se perdre. Cet appel REDEMANDE a FedaPay tant que le
+     * paiement est en attente, ce qui debloque la commande meme si aucune
+     * notification n'arrive jamais.
+     */
+    public function status(Request $request, $orderId)
+    {
+        $order = Order::with('payment')->find($orderId);
+
+        if (! $order || $order->client_id !== $request->user()->id) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
+
+        $payment = $order->payment;
+        $transactionId = $payment?->transaction_id;
+
+        if ($payment && $payment->status !== \App\Enums\PaymentStatus::COMPLETED && $transactionId) {
+            $this->fedapay->settle($order, $transactionId, source: 'polling');
+            $order->refresh()->load('payment');
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'payment_status' => $order->payment_status,
+                'status' => $order->status,
+                // `pending` cote FedaPay signifie « le telephone du client
+                // sonne encore » : l'interface doit continuer d'attendre.
+                'awaiting_confirmation' => $order->payment_status !== 'completed' && (bool) $transactionId,
+            ],
+        ]);
+    }
+
+    /**
      * Le client revient du module de paiement. On interroge FedaPay avant de
      * croire quoi que ce soit.
      */

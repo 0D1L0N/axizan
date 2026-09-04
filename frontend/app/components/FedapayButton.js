@@ -91,6 +91,10 @@ export default function FedapayButton({ order, publicKey, sandbox, onSettled }) 
         // La description porte le numéro de commande : c'est ce qui permet au
         // webhook de rattacher la notification à la bonne commande.
         description: `Axizán ${order.order_number}`,
+        // `custom_metadata` appartient à l'objet transaction, pas à la racine
+        // de init() : placé ailleurs, FedaPay l'ignore et le webhook doit
+        // deviner la commande en analysant la description.
+        custom_metadata: { order_number: order.order_number },
       },
       currency: { iso: 'XOF' },
       customer: {
@@ -100,7 +104,6 @@ export default function FedapayButton({ order, publicKey, sandbox, onSettled }) 
           ? { number: order.client.phone, country: 'bj' }
           : undefined,
       },
-      custom_metadata: { order_number: order.order_number },
       onComplete(response) {
         // `reason` vaut CHECKOUT_COMPLETED quand le paiement aboutit ; on ne
         // s'y fie pas pour valider, seulement pour savoir quoi afficher.

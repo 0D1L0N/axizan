@@ -367,3 +367,61 @@ définitivement incapable de déposer.
 `DeliveryController::confirm` autorise désormais **avant** de valider : sinon un
 inconnu apprenait la forme attendue du corps de requête avant qu'on lui dise
 que la livraison ne le regarde pas.
+
+## Paiement Mobile Money par demande poussée (4 sept. 2026)
+
+**149 tests, 627 assertions.** Ce qui était en place n'utilisait que le module
+Checkout.js — une page de paiement à charger. L'API FedaPay permet mieux : la
+**demande poussée**, qui fait sonner le téléphone du client.
+
+### Le parcours
+
+`POST /orders/{id}/request-payment` avec `provider` et `phone` :
+
+1. `Transaction::create()` — montant, description, devise XOF, `custom_metadata`
+   portant le numéro de commande.
+2. L'identifiant est **écrit sur le paiement avant la poussée** : si l'envoi
+   échoue, le webhook pourra quand même retrouver la commande.
+3. `sendNow($mode)` — génère un jeton et pousse vers l'opérateur. **Sans ce
+   second appel, la transaction existe mais rien n'arrive sur le téléphone.**
+4. Le client tape son code. Le webhook `transaction.approved` débloque la
+   commande.
+
+Les modes sont imposés par FedaPay et n'ont rien d'intuitif — MTN Bénin est
+`mtn_open` (`mtn` n'existe pas), Celtiis est `sbin`, le nom de l'ancienne
+société. La correspondance est centralisée dans `FedapayService::MODES` et
+verrouillée par un test : une faute de frappe casserait tous les paiements d'un
+opérateur sans qu'aucun autre test ne s'en aperçoive.
+
+### Le sondage, parce que le webhook ne suffit pas
+
+`GET /orders/{id}/payment-status` **redemande à FedaPay** tant que le paiement
+est en attente. Le webhook reste la source de vérité, mais en développement il
+n'y a pas d'URL publique, et en production une notification peut se perdre :
+sans ce recours, une commande payée dormirait indéfiniment.
+
+### Limitation de débit, non négociable
+
+`request-payment` est bridée à **5 par minute**. Rien n'oblige le numéro saisi à
+être celui du client : sans cette limite, la route devient un outil de
+harcèlement gratuit — chaque appel fait sonner un téléphone tiers.
+
+### Bug corrigé
+
+`custom_metadata` était passé à la racine de `FedaPay.init()` alors qu'il
+appartient à l'objet `transaction`. FedaPay l'ignorait, et le webhook devait
+deviner la commande en analysant la description — ça marchait par chance, parce
+que la description contient le numéro.
+
+### Pour passer en production
+
+1. Compte Live sur fedapay.com, section Développeur → clés API.
+2. `FEDAPAY_PUBLIC_KEY`, `FEDAPAY_SECRET_KEY`, `FEDAPAY_ENABLED=true`,
+   `FEDAPAY_SANDBOX=false`.
+3. Webhook sur `https://<domaine>/api/v1/webhooks/fedapay`, événement
+   `transaction.approved`. Le secret du webhook se copie depuis cet écran et
+   est **différent de la clé secrète** — c'est la cause n°1 des erreurs de
+   signature.
+
+Numéros de test en sandbox : **66000001** réussit, **66000000** échoue (MTN) ;
+**64000001** réussit, **64000000** échoue (Moov).

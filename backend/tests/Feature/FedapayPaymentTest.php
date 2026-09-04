@@ -301,4 +301,95 @@ class FedapayPaymentTest extends TestCase
         $this->assertSame('declarative', $meta['flow']);
         $this->assertNull($meta['fedapay']);
     }
+
+    // ---------------------------------------------- demande Mobile Money
+
+    public function test_the_momo_modes_match_what_fedapay_expects(): void
+    {
+        // Ces chaines sont imposees par FedaPay et n'ont rien d'intuitif :
+        // MTN Benin est `mtn_open` (`mtn` n'existe pas) et Celtiis est `sbin`,
+        // le nom de l'ancienne societe. Une faute de frappe ici casse tous les
+        // paiements d'un operateur sans qu'aucun autre test ne s'en apercoive.
+        $this->assertSame(
+            ['mtn' => 'mtn_open', 'moov' => 'moov', 'celtiis' => 'sbin'],
+            FedapayService::MODES
+        );
+    }
+
+    public function test_an_unknown_operator_is_refused(): void
+    {
+        $order = $this->makeOrder();
+
+        Sanctum::actingAs($order->client, ['*']);
+        $this->postJson("/api/v1/orders/{$order->id}/request-payment", [
+            'provider' => 'orange',
+            'phone' => '66000001',
+        ])->assertStatus(422)->assertJsonValidationErrors('provider');
+    }
+
+    public function test_a_payment_request_needs_a_number(): void
+    {
+        $order = $this->makeOrder();
+
+        Sanctum::actingAs($order->client, ['*']);
+        $this->postJson("/api/v1/orders/{$order->id}/request-payment", [
+            'provider' => 'mtn',
+        ])->assertStatus(422)->assertJsonValidationErrors('phone');
+    }
+
+    public function test_nobody_can_push_a_payment_request_on_someone_elses_order(): void
+    {
+        $order = $this->makeOrder();
+
+        Sanctum::actingAs($this->createClient(), ['*']);
+
+        // Chaque demande fait sonner un telephone : sans ce verrou, la route
+        // devient un outil de harcelement.
+        $this->postJson("/api/v1/orders/{$order->id}/request-payment", [
+            'provider' => 'mtn',
+            'phone' => '66000001',
+        ])->assertNotFound();
+    }
+
+    public function test_an_already_paid_order_refuses_a_new_request(): void
+    {
+        $order = $this->makeOrder();
+        $this->fakeVerification(ok: true, amount: (float) $order->total);
+
+        Sanctum::actingAs($order->client, ['*']);
+        $this->postJson("/api/v1/orders/{$order->id}/confirm-payment", ['transaction_id' => '123456'])
+            ->assertOk();
+
+        $this->postJson("/api/v1/orders/{$order->id}/request-payment", [
+            'provider' => 'mtn',
+            'phone' => '66000001',
+        ])->assertStatus(422)->assertJsonPath('error', 'already_paid');
+    }
+
+    public function test_polling_settles_the_order_when_the_webhook_never_arrives(): void
+    {
+        $order = $this->makeOrder();
+        $order->payment->update(['transaction_id' => '987654']);
+        $this->fakeVerification(ok: true, amount: (float) $order->total);
+
+        Sanctum::actingAs($order->client, ['*']);
+        $payload = $this->getJson("/api/v1/orders/{$order->id}/payment-status")
+            ->assertOk()
+            ->json('data');
+
+        // En developpement il n'y a aucune URL publique, et en production une
+        // notification peut se perdre : le sondage redemande a FedaPay plutot
+        // que de laisser une commande payee dormir indefiniment.
+        $this->assertSame('completed', $payload['payment_status']);
+        $this->assertFalse($payload['awaiting_confirmation']);
+    }
+
+    public function test_polling_someone_elses_order_is_refused(): void
+    {
+        $order = $this->makeOrder();
+
+        Sanctum::actingAs($this->createClient(), ['*']);
+
+        $this->getJson("/api/v1/orders/{$order->id}/payment-status")->assertNotFound();
+    }
 }

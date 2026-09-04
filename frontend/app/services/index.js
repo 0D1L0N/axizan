@@ -39,6 +39,11 @@ export const orderService = {
   cancelOrder: (id, reason) => api.delete(`/orders/${id}`, { data: { reason } }),
   /** Facture d'une commande livrée. 409 tant que rien n'a été remis. */
   getInvoice: (id) => api.get(`/orders/${id}/invoice`),
+  /** Pousse une demande Mobile Money : le téléphone du client sonne. */
+  requestPayment: (id, provider, phone) =>
+    api.post(`/orders/${id}/request-payment`, { provider, phone }),
+  /** Sondage pendant que le client compose son code secret. */
+  getPaymentStatus: (id) => api.get(`/orders/${id}/payment-status`),
   /** Recharge le panier avec les articles d'une commande passee, aux prix du jour. */
   reorder: (id) => api.post(`/orders/${id}/reorder`),
   /** Le client declare avoir paye. Ne valide rien : un admin verifie ensuite. */
