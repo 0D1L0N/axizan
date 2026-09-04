@@ -1,34 +1,26 @@
 {
-  "name": "Axizán - Livraison Alimentaire",
+  "name": "Axizán — On fait votre marché, vous cuisinez.",
   "short_name": "Axizán",
-  "description": "Plateforme de livraison de produits alimentaires au Bénin",
-  "start_url": "/",
+  "description": "Vos produits frais achetés au marché le jour même et livrés dans le créneau d'une heure de votre choix, à Cotonou, Abomey-Calavi et Porto-Novo.",
+  "id": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#ffffff",
-  "theme_color": "#FF6B6B",
+  "orientation": "portrait",
+  "background_color": "#FBF7EF",
+  "theme_color": "#12372A",
   "icons": [
-    {
-      "src": "🍲",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "🍲",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Le marché", "url": "/products", "description": "Parcourir le catalogue" },
+    { "name": "Mon panier", "url": "/cart", "description": "Terminer ma commande" },
+    { "name": "Mes commandes", "url": "/orders", "description": "Suivre une livraison" }
   ],
   "categories": ["food", "shopping"],
-  "screenshots": [
-    {
-      "src": "/screenshots/screenshot1.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ]
+  "lang": "fr",
+  "dir": "ltr"
 }

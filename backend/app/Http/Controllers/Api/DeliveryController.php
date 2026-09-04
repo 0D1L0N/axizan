@@ -20,7 +20,7 @@ class DeliveryController extends Controller
     public function listReadyOrders(Request $request)
     {
         // Vérifier rôle livreur
-        if ($request->user()->role !== 'livreur') {
+        if (!$request->user()->isLivreur()) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
@@ -41,13 +41,33 @@ class DeliveryController extends Controller
     }
 
     /**
+     * Mes livraisons en cours (assignées, récupérées ou en transit)
+     */
+    public function mine(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->isLivreur()) {
+            return response()->json(['success' => false, 'error' => 'forbidden'], 403);
+        }
+
+        $deliveries = $user->deliveries()
+            ->whereIn('status', ['assigned', 'picked_up', 'in_transit'])
+            ->with('order.client', 'order.deliveryAddress')
+            ->latest()
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $deliveries]);
+    }
+
+    /**
      * Accepter une livraison
      */
     public function accept($orderId, Request $request)
     {
         $user = $request->user();
 
-        if ($user->role !== 'livreur') {
+        if (!$user->isLivreur()) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 

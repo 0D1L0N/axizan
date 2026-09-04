@@ -12,7 +12,6 @@ export default function RegisterPage() {
     phone: '',
     password: '',
     password_confirmation: '',
-    role: 'client',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +37,9 @@ export default function RegisterPage() {
 
     try {
       await register(formData);
-      router.push('/');
+      // Premiere connexion : on emmene directement completer le compte plutot
+      // que de laisser decouvrir au checkout qu'il manque une adresse.
+      router.push('/account?bienvenue=1');
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors de l\'inscription');
     } finally {
@@ -92,20 +93,6 @@ export default function RegisterPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="+229 XX XX XX XX"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Rôle</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="client">🛒 Client</option>
-              <option value="preparateur">👨‍🍳 Préparateur</option>
-              <option value="livreur">🚚 Livreur</option>
-            </select>
           </div>
 
           <div>

@@ -8,11 +8,18 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
+    /** Taux appliqué au sous-total, en pourcentage. */
+    private const TAX_RATE_PERCENT = 10.0;
+
+    /** Frais retenus quand l'adresse n'est rattachée à aucune zone. */
+    private const DEFAULT_DELIVERY_FEE = 500;
+
     public function __construct(
         private NotificationService $notificationService,
         private PaymentService $paymentService
@@ -39,7 +46,7 @@ class OrderService
 
             // Calculer les totaux
             $subtotal = $this->calculateSubtotal($cartItems);
-            $deliveryFee = $data['delivery_fee'] ?? 0;
+            $deliveryFee = $this->calculateDeliveryFee($data['delivery_address_id']);
             $tax = $this->calculateTax($subtotal);
             $promoDiscount = 0;
 
@@ -65,7 +72,7 @@ class OrderService
                 'total' => $total,
                 'promo_code_id' => $data['promo_code_id'] ?? null,
                 'promo_discount' => $promoDiscount,
-                'payment_method' => $data['payment_method'] ?? 'mobile_money',
+                'payment_method' => $data['payment_method'] ?? 'manual',
                 'payment_status' => 'pending',
                 'client_notes' => $data['client_notes'] ?? null,
             ]);
@@ -75,10 +82,15 @@ class OrderService
                 $this->addOrderItem($order, $item);
             }
 
-            // Réserver le créneau
-            if ($data['delivery_slot_id']) {
-                $order->deliverySlot->incrementOrderCount();
-            }
+            // Le créneau n'a plus de compteur à incrémenter : sa capacité se
+            // déduit des commandes de la date visée (DeliverySlot::bookedCountsOn).
+
+            // Créer le paiement en attente de validation manuelle (admin)
+            $this->paymentService->createManualPayment(
+                $order,
+                $data['payment_provider'] ?? null,
+                $data['payer_phone'] ?? null
+            );
 
             // Créer la notification
             $this->notificationService->sendOrderCreatedNotification($order);
@@ -213,10 +225,8 @@ class OrderService
                 'cancellation_reason' => $reason,
             ]);
 
-            // Libérer le créneau
-            if ($order->delivery_slot_id) {
-                $order->deliverySlot->decrementOrderCount();
-            }
+            // Rien à libérer : une commande annulée est exclue du décompte de
+            // capacité, la place se rouvre d'elle-même.
 
             // Rembourser si nécessaire
             if ($order->payment_status === 'completed') {
@@ -242,11 +252,22 @@ class OrderService
             'product_id' => $item['product_id'],
             'quantity' => $item['quantity'],
             'quantity_unit' => $item['quantity_unit'] ?? 'piece',
-            'unit_price' => $product->base_price,
-            'total_price' => $product->base_price * $item['quantity'],
+            'unit_price' => Money::round($product->base_price),
+            'total_price' => Money::lineTotal($product->base_price, $item['quantity']),
             'special_instructions' => $item['special_instructions'] ?? null,
-            'removed_ingredients' => isset($item['removed_ingredients']) ? json_encode($item['removed_ingredients']) : null,
+            'removed_ingredients' => $item['removed_ingredients'] ?? null,
+            'substitution_preference' => $item['substitution_preference'] ?? 'replace',
         ]);
+    }
+
+    /**
+     * Calculer les frais de livraison depuis la zone de l'adresse
+     */
+    private function calculateDeliveryFee($addressId): int
+    {
+        $address = \App\Models\Address::with('zone')->find($addressId);
+
+        return Money::round($address?->zone?->base_delivery_fee ?? self::DEFAULT_DELIVERY_FEE);
     }
 
     /**
@@ -256,13 +277,16 @@ class OrderService
     {
         $subtotal = 0;
 
+        // Chaque ligne est arrondie AVANT la somme, exactement comme dans
+        // addOrderItem() : sinon le sous-total affiche ne correspond pas a la
+        // somme des lignes que le client a sous les yeux.
         foreach ($cartItems as $item) {
             if ($item['type'] === 'product') {
                 $product = Product::find($item['product_id']);
-                $subtotal += $product->base_price * $item['quantity'];
+                $subtotal += Money::lineTotal($product->base_price, $item['quantity']);
             } elseif ($item['type'] === 'menu') {
                 $menu = \App\Models\Menu::find($item['menu_id']);
-                $subtotal += ($menu->discounted_price ?? $menu->base_price) * $item['quantity'];
+                $subtotal += Money::lineTotal($menu->discounted_price ?? $menu->base_price, $item['quantity']);
             }
         }
 
@@ -270,11 +294,11 @@ class OrderService
     }
 
     /**
-     * Calculer taxes (10%)
+     * Calculer taxes (10%), au franc entier.
      */
-    private function calculateTax(float $subtotal): float
+    private function calculateTax(float $subtotal): int
     {
-        return $subtotal * 0.10;
+        return Money::percentOf($subtotal, self::TAX_RATE_PERCENT);
     }
 
     /**
@@ -296,6 +320,6 @@ class OrderService
             return 0;
         }
 
-        return $promo->calculateDiscount($orderTotal);
+        return Money::round($promo->calculateDiscount($orderTotal));
     }
 }

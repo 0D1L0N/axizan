@@ -10,9 +10,9 @@ enum DeliveryStatus: string
     case DELIVERED = 'delivered';
     case FAILED = 'failed';
 
-    public static function getLabel(DeliveryStatus $status): string
+    public function getLabel(): string
     {
-        return match ($status) {
+        return match ($this) {
             self::ASSIGNED => 'Assignée',
             self::PICKED_UP => 'Récupérée',
             self::IN_TRANSIT => 'En transit',

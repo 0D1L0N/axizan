@@ -134,9 +134,11 @@ Si vous avez fait `php artisan db:seed`, vous avez ces comptes:
 | Rôle | Email | Mot de passe |
 |------|-------|-------------|
 | 👨‍💼 Client | `client@test.com` | `password123` |
-| 👨‍🍳 Préparateur | `prep@test.com` | `password123` |
+| 👨‍🍳 Préparateur | `preparateur@test.com` | `password123` |
 | 🛵 Livreur | `livreur@test.com` | `password123` |
 | 🔐 Admin | `admin@test.com` | `password123` |
+
+⚠️ Ces comptes ne sont seedés qu'en environnement `local`/`testing` (voir `DatabaseSeeder`). Ils ne doivent jamais exister dans une base de production.
 
 ---
 

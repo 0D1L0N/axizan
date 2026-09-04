@@ -1,38 +1,78 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Header from '@/app/components/Header';
+import Footer from '@/app/components/Footer';
 import { useCart } from '@/app/contexts/CartContext';
 import { RECIPE_MENUS } from '@/app/data/beninCatalog';
+import { productService } from '@/app/services';
+import { formatQuantity, formatPrice, normalizeQuantity } from '@/app/lib/units';
+import { productImage } from '@/app/lib/images';
+import ProductImage from '@/app/components/ProductImage';
+import RemoteImage from '@/app/components/RemoteImage';
 import { Check, Clock, Plus, ShoppingBasket, Users } from 'lucide-react';
 
 export default function MenusPage() {
   const { addItem } = useCart();
+  const [productsByName, setProductsByName] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const handleAddRecipe = (recipe) => {
-    recipe.ingredients.forEach((ingredient, index) => {
-      addItem({
-        product_id: `${recipe.id}-${index}`,
-        type: 'recipe_ingredient',
-        name: `${ingredient.name} (${ingredient.quantity})`,
-        price: ingredient.price,
-        image: ingredient.image,
-        quantity: 1,
-        price_type: 'piece',
-      });
-    });
-  };
+  useEffect(() => {
+    productService
+      .getProducts({ limit: 100 })
+      .then((res) => {
+        const map = {};
+        res.data.data.forEach((product) => {
+          map[product.name] = product;
+        });
+        setProductsByName(map);
+      })
+      .catch(() => setProductsByName({}))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const handleAddIngredient = (recipe, ingredient, index) => {
+  /**
+   * Un panier-recette n'est pas une entite metier : c'est un raccourci qui resout
+   * ses ingredients vers de vrais produits du catalogue, puis les ajoute au panier.
+   */
+  const recipes = useMemo(
+    () =>
+      RECIPE_MENUS.map((recipe) => {
+        const lines = recipe.ingredients.map((ingredient) => {
+          const product = productsByName[ingredient.product];
+          const quantity = product ? normalizeQuantity(ingredient.quantity, product.price_type) : ingredient.quantity;
+          return {
+            product,
+            name: ingredient.product,
+            quantity,
+            lineTotal: product ? Number(product.base_price) * quantity : 0,
+          };
+        });
+
+        return {
+          ...recipe,
+          lines,
+          total: lines.reduce((sum, line) => sum + line.lineTotal, 0),
+          missing: lines.filter((line) => !line.product).length,
+        };
+      }),
+    [productsByName]
+  );
+
+  const addLine = (line) => {
+    if (!line.product) return;
     addItem({
-      product_id: `${recipe.id}-${index}`,
-      type: 'recipe_ingredient',
-      name: `${ingredient.name} (${ingredient.quantity})`,
-      price: ingredient.price,
-      image: ingredient.image,
-      quantity: 1,
-      price_type: 'piece',
+      product_id: line.product.id,
+      type: 'product',
+      name: line.product.name,
+      price: Number(line.product.base_price),
+      image: productImage(line.product, 'thumb'),
+      quantity: line.quantity,
+      price_type: line.product.price_type,
     });
   };
+
+  const handleAddRecipe = (recipe) => recipe.lines.forEach(addLine);
 
   return (
     <>
@@ -44,16 +84,18 @@ export default function MenusPage() {
             <div>
               <p className="text-sm font-black uppercase tracking-[0.3em] text-[#FFB000]">Paniers-recettes</p>
               <h1 className="mt-4 text-5xl font-black leading-tight tracking-tight md:text-6xl">
-                Tu choisis le plat, Axizán prépare les courses.
+                Vous choisissez le plat, Axizán fait les courses.
               </h1>
               <p className="mt-5 max-w-2xl text-lg font-medium leading-8 text-white/75">
                 Ici, “menu” ne veut pas dire formule vague. C’est un panier complet pour cuisiner : salade de fruits, Atassi, Amiwo, Gari foto et autres plats du quotidien.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              {RECIPE_MENUS.slice(0, 4).map((recipe) => (
+              {recipes.slice(0, 4).map((recipe) => (
                 <div key={recipe.id} className="overflow-hidden rounded-[30px] bg-white/10 shadow-sm backdrop-blur">
-                  <img src={recipe.image} alt={recipe.title} className="h-40 w-full object-cover" />
+                  <div className="relative h-40 w-full overflow-hidden">
+                    <RemoteImage src={recipe.image} alt={recipe.title} fill sizes="(max-width: 768px) 100vw, 25vw" className="object-cover" />
+                  </div>
                   <div className="p-4">
                     <p className="text-xs font-black uppercase tracking-[0.22em] text-[#FFB000]">{recipe.time}</p>
                     <h2 className="mt-1 text-xl font-black">{recipe.title}</h2>
@@ -66,11 +108,11 @@ export default function MenusPage() {
 
         <section className="mx-auto max-w-7xl px-4 py-12">
           <div className="grid gap-8">
-            {RECIPE_MENUS.map((recipe, recipeIndex) => (
+            {recipes.map((recipe, recipeIndex) => (
               <article key={recipe.id} className="overflow-hidden rounded-[36px] border border-black/5 bg-white shadow-sm">
                 <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="relative min-h-[360px] overflow-hidden">
-                    <img src={recipe.image} alt={recipe.title} className="absolute inset-0 h-full w-full object-cover" />
+                    <RemoteImage src={recipe.image} alt={recipe.title} fill sizes="(max-width: 1024px) 100vw, 45vw" className="object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                     <div className="absolute left-6 right-6 top-6 flex flex-wrap gap-2">
                       {recipe.tags.map((tag) => (
@@ -98,7 +140,9 @@ export default function MenusPage() {
                       </div>
                       <div className="text-left md:text-right">
                         <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Panier estimé</p>
-                        <p className="text-3xl font-black text-[#12372A]">{recipe.total.toLocaleString('fr-FR')} XOF</p>
+                        <p className="text-3xl font-black text-[#12372A]">
+                          {loading ? '—' : formatPrice(recipe.total)}
+                        </p>
                       </div>
                     </div>
 
@@ -106,22 +150,39 @@ export default function MenusPage() {
                       <div className="mb-4 flex items-center justify-between gap-4">
                         <h3 className="text-2xl font-black text-[#12372A]">Articles nécessaires</h3>
                         <span className="rounded-full bg-[#12372A]/8 px-3 py-1 text-xs font-black text-[#12372A]">
-                          {recipe.ingredients.length} produits
+                          {recipe.lines.length} produits
                         </span>
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2">
-                        {recipe.ingredients.map((ingredient, index) => (
-                          <div key={`${recipe.id}-${ingredient.name}`} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-[#FBF7EF] p-3">
-                            <img src={ingredient.image} alt={ingredient.name} className="h-14 w-14 rounded-xl object-cover" />
+                        {recipe.lines.map((line) => (
+                          <div
+                            key={`${recipe.id}-${line.name}`}
+                            className={`flex items-center gap-3 rounded-2xl border border-gray-100 bg-[#FBF7EF] p-3 ${
+                              !line.product && !loading ? 'opacity-50' : ''
+                            }`}
+                          >
+                            <ProductImage
+                              product={line.product || { name: line.name }}
+                              size="thumb"
+                              emojiSize="text-xl"
+                              className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                            />
                             <div className="min-w-0 flex-1">
-                              <p className="truncate font-black text-gray-900">{ingredient.name}</p>
-                              <p className="text-sm font-semibold text-gray-500">{ingredient.quantity} · {ingredient.price.toLocaleString('fr-FR')} XOF</p>
+                              <p className="truncate font-black text-gray-900">{line.name}</p>
+                              <p className="text-sm font-semibold text-gray-500">
+                                {line.product
+                                  ? `${formatQuantity(line.quantity, line.product.price_type)} · ${formatPrice(line.lineTotal)}`
+                                  : loading
+                                    ? 'Chargement...'
+                                    : 'Indisponible au catalogue'}
+                              </p>
                             </div>
                             <button
-                              onClick={() => handleAddIngredient(recipe, ingredient, index)}
-                              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[#12372A] shadow-sm hover:bg-[#FFB000]"
-                              title={`Ajouter ${ingredient.name}`}
+                              onClick={() => addLine(line)}
+                              disabled={!line.product}
+                              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[#12372A] shadow-sm transition hover:bg-[#FFB000] disabled:cursor-not-allowed disabled:opacity-40"
+                              title={`Ajouter ${line.name}`}
                             >
                               <Plus size={17} />
                             </button>
@@ -131,10 +192,16 @@ export default function MenusPage() {
 
                       <button
                         onClick={() => handleAddRecipe(recipe)}
-                        className="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#FFB000] px-6 py-4 font-black text-[#1C140D] shadow-sm transition hover:bg-[#f3a300] md:w-auto"
+                        disabled={loading || recipe.lines.every((line) => !line.product)}
+                        className="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#FFB000] px-6 py-4 font-black text-[#1C140D] shadow-sm transition hover:bg-[#f3a300] disabled:cursor-not-allowed disabled:bg-gray-300 md:w-auto"
                       >
                         <ShoppingBasket size={19} /> Ajouter tout le panier-recette
                       </button>
+                      {recipe.missing > 0 && !loading && (
+                        <p className="mt-3 text-sm font-semibold text-gray-500">
+                          {recipe.missing} article(s) de cette recette ne sont pas encore au catalogue.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -149,7 +216,7 @@ export default function MenusPage() {
               {[
                 ['Simple à présenter', 'Le client comprend immédiatement : plat choisi, ingrédients livrés.'],
                 ['Adapté au Bénin', 'Les produits et recettes correspondent aux habitudes locales.'],
-                ['Prêt pour la suite', 'On pourra brancher stock réel, variantes et paiement Mobile Money.'],
+                ['Prêt pour la suite', 'On pourra brancher variantes, substitutions et paiement Mobile Money.'],
               ].map(([title, text]) => (
                 <div key={title} className="rounded-[26px] bg-white/10 p-5">
                   <Check className="text-[#FFB000]" size={22} />
@@ -161,6 +228,7 @@ export default function MenusPage() {
           </div>
         </section>
       </main>
+      <Footer />
     </>
   );
 }

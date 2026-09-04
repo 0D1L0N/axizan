@@ -10,6 +10,49 @@ class Order extends Model
 {
     use HasFactory;
 
+    /**
+     * Journalisation des transitions.
+     *
+     * Branchee sur l'evenement Eloquent plutot que dans chaque methode du
+     * service : toute voie qui change le statut est couverte, y compris celles
+     * qui n'existent pas encore et une correction faite a la main en console.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Order $order) {
+            OrderEvent::record($order, 'order.created', null, self::statusValue($order->status), context: [
+                'total' => (float) $order->total,
+                'items' => $order->items()->count(),
+            ]);
+        });
+
+        static::updated(function (Order $order) {
+            if (! $order->wasChanged('status')) {
+                return;
+            }
+
+            $from = self::statusValue($order->getOriginal('status'));
+            $to = self::statusValue($order->status);
+
+            OrderEvent::record($order, 'status.changed', $from, $to, $order->cancellation_reason);
+        });
+    }
+
+    /** Le statut circule tantot en enum, tantot en chaine selon le chemin. */
+    private static function statusValue($status): ?string
+    {
+        if ($status instanceof \BackedEnum) {
+            return $status->value;
+        }
+
+        return $status === null ? null : (string) $status;
+    }
+
+    public function events()
+    {
+        return $this->hasMany(OrderEvent::class)->orderBy('created_at');
+    }
+
     protected $fillable = [
         'order_number',
         'client_id',
@@ -99,6 +142,40 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    /**
+     * Ce que l'achat au marche a reellement coute.
+     *
+     * null tant qu'aucune ligne n'a de prix reel saisi. Le distinguer de zero
+     * compte : zero laisserait croire a une marge de 100 %.
+     */
+    public function purchaseCost(): ?int
+    {
+        $purchased = $this->items->filter(fn (OrderItem $item) => $item->isPurchased());
+
+        if ($purchased->isEmpty()) {
+            return null;
+        }
+
+        return \App\Support\Money::round($purchased->sum(fn (OrderItem $item) => (float) $item->actual_total_price));
+    }
+
+    /**
+     * Marge brute : ce que le client a paye pour les articles, moins ce qu'ils
+     * ont coute. Les frais de livraison et la taxe sont exclus — ils ne
+     * financent pas l'achat.
+     *
+     * Ne vaut que si TOUTES les lignes ont ete saisies : une marge calculee
+     * sur un panier a moitie renseigne est pire qu'une absence de chiffre.
+     */
+    public function grossMargin(): ?int
+    {
+        if ($this->items->isEmpty() || $this->items->contains(fn (OrderItem $item) => ! $item->isPurchased())) {
+            return null;
+        }
+
+        return \App\Support\Money::round((float) $this->subtotal - (float) $this->purchaseCost());
+    }
+
     public function delivery()
     {
         return $this->hasOne(Delivery::class);
@@ -179,7 +256,7 @@ class Order extends Model
             ->max('product.preparation_time_minutes') ?? 30;
     }
 
-    public function generateOrderNumber()
+    public static function generateOrderNumber()
     {
         $count = static::whereDate('created_at', today())->count() + 1;
         return sprintf('AXZ-%s-%05d', now()->format('Ymd'), $count);

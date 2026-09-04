@@ -14,7 +14,7 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::query();
+        $query = Product::query()->with('category');
 
         // Filtrer par catégorie
         if ($request->has('category')) {
