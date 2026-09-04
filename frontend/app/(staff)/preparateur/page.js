@@ -347,35 +347,54 @@ function PreparatorPage() {
                   Le livreur vient chercher le panier ici. Ne marquez « déposé » qu’une fois sur place.
                 </p>
 
-                {/* Photo du panier : le client paie d'avance un retrait qu'il
-                    ne voit pas faire. Elle protège aussi Axizán si la qualité
-                    est contestée. `capture` ouvre l'appareil photo directement. */}
-                <label className="mt-4 block">
-                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-                    Photo du panier {photo ? '' : '· recommandée'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-                    className="mt-2 block w-full text-base file:mr-3 file:h-14 file:rounded-card file:border-2 file:border-forest-800/20 file:bg-white file:px-5 file:font-bold file:text-forest-800"
-                  />
-                  {photo && (
-                    <span className="mt-2 flex items-center gap-2 font-bold text-forest-700">
-                      <Camera size={17} /> {photo.name}
-                      <button
-                        type="button"
-                        onClick={() => setPhoto(null)}
-                        className="ml-auto font-bold text-clay-600 underline"
-                      >
-                        Retirer
-                      </button>
-                    </span>
-                  )}
-                </label>
               </section>
             )}
+
+            {/*
+              Photo du panier — obligatoire, et volontairement HORS du bloc
+              dépôt : tous les marchés n'en ont pas encore un, et l'y laisser
+              rendrait le dépôt impossible à ces préparateurs-là.
+
+              Le client paie d'avance un retrait qu'il ne voit pas faire :
+              cette image est la promesse de qualité rendue vérifiable, et la
+              seule preuve d'Axizán si elle est contestée.
+              `capture` ouvre l'appareil photo directement.
+            */}
+            <section
+              className={`mt-4 rounded-panel border-2 bg-white p-5 ${
+                photo ? 'border-forest-800/20' : 'border-clay-500/50'
+              }`}
+            >
+              <p className="eyebrow text-clay-500">Obligatoire</p>
+              <h2 className="mt-2 flex items-center gap-2 font-display text-xl font-semibold text-forest-800">
+                <Camera size={20} /> Photo du panier
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-ink-500">
+                C’est ce que le client verra du travail que vous venez de faire.
+              </p>
+
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                required
+                onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+                className="mt-3 block w-full text-base file:mr-3 file:h-14 file:rounded-card file:border-2 file:border-forest-800/20 file:bg-white file:px-5 file:font-bold file:text-forest-800"
+              />
+
+              {photo && (
+                <span className="mt-2 flex items-center gap-2 font-bold text-forest-700">
+                  <Camera size={17} /> {photo.name}
+                  <button
+                    type="button"
+                    onClick={() => setPhoto(null)}
+                    className="ml-auto font-bold text-clay-600 underline"
+                  >
+                    Reprendre
+                  </button>
+                </span>
+              )}
+            </section>
 
             {/* Porte de sortie : sans elle, une moto en panne bloque la
                 commande pour toujours. */}
@@ -418,7 +437,7 @@ function PreparatorPage() {
                    « déposé au dépôt » : le livreur s’y déplace, il ne doit
                    pas trouver un panier encore au marché. */
                 <button
-                  disabled={busy || !allDone || missingSupplier > 0 || unsent > 0}
+                  disabled={busy || !allDone || missingSupplier > 0 || unsent > 0 || !photo}
                   onClick={async () => {
                     const ok = await run(
                       () => preparatorService.ready(openOrder.id, { photo }),
@@ -437,6 +456,8 @@ function PreparatorPage() {
                     `Encore ${items.length - done} article(s)`
                   ) : missingSupplier > 0 ? (
                     'Fournisseur manquant'
+                  ) : !photo ? (
+                    'Photo du panier requise'
                   ) : unsent > 0 ? (
                     /* Déposer avant que la file soit vide ferait refuser le
                        serveur pour « articles en attente » — alors que tout

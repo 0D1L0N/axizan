@@ -342,6 +342,31 @@ class OrderController extends Controller
     }
 
     /**
+     * Facture d'une commande livree.
+     *
+     * Rien n'est stocke : la facture est calculee a partir de la commande,
+     * pour qu'il n'existe jamais deux versions des memes montants.
+     */
+    public function invoice($id, Request $request, \App\Services\InvoiceService $invoices)
+    {
+        $order = Order::find($id);
+
+        if (! $order || ($order->client_id !== $request->user()->id && ! $request->user()->isAdmin())) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
+
+        if (! $invoices->isAvailableFor($order)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'not_delivered',
+                'message' => 'La facture est disponible une fois la commande livrée.',
+            ], 409);
+        }
+
+        return response()->json(['success' => true, 'data' => $invoices->build($order)]);
+    }
+
+    /**
      * Annuler commande
      */
     public function cancel($id, Request $request)

@@ -93,6 +93,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [OrderController::class, 'index']);
             Route::get('/{id}', [OrderController::class, 'show']);
             Route::delete('/{id}', [OrderController::class, 'cancel']);
+            Route::get('/{id}/invoice', [OrderController::class, 'invoice']);
             Route::post('/{id}/reorder', [OrderController::class, 'reorder']);
             Route::post('/{id}/declare-payment', [OrderController::class, 'declarePayment']);
             Route::post('/{id}/confirm-payment', [FedapayController::class, 'confirm']);

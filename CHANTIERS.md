@@ -313,3 +313,57 @@ renvoie.
 - 27 des 49 produits sans photo.
 - `orders.payment_method` a encore `'cash'` par défaut en migration, ce qui
   contredit la décision « pas de paiement à la livraison ».
+
+## Facture et preuves obligatoires (4 sept. 2026)
+
+**142 tests, 606 assertions.**
+
+### Facture après livraison
+
+`GET /orders/{id}/invoice`, accessible au client propriétaire et à l'admin,
+**409 tant que rien n'a été remis** : avant la livraison il n'y a rien à
+facturer, seulement une commande dont le contenu peut encore changer au marché.
+
+- **Calculée, jamais stockée.** Les montants vivent déjà sur la commande et ses
+  lignes ; les recopier créerait une seconde vérité qui pourrait diverger. Le
+  numéro se dérive du numéro de commande — `AXZ-20260904-00012` devient
+  `FA-20260904-00012` : au téléphone, le client donne l'un, l'équipe retrouve
+  l'autre sans table de correspondance.
+- **Elle dit ce qui a été livré, pas ce qui a été commandé.** Un article retiré
+  au marché a bien été payé : la facture l'affiche barré, marqué « non livré »,
+  et totalise le montant dû (`totals.undelivered`). L'effacer reviendrait à
+  facturer une marchandise jamais remise. Un article remplacé nomme ce qui a
+  réellement été livré.
+- La référence portée est celle **constatée par Axizán**, jamais celle déclarée
+  par le client : une facture ne reprend pas une affirmation.
+- Page `/orders/[id]/facture`, pensée pour l'impression autant que pour
+  l'écran — un ménage fonctionnaire qui justifie une dépense a besoin d'un
+  papier ou d'un PDF. Le navigateur fait le PDF via `@media print` ; aucune
+  bibliothèque de rendu embarquée. `print-color-adjust: exact` sans quoi la
+  plupart des navigateurs impriment un document décoloré.
+- L'e-mail « commande livrée » mène maintenant à la facture, pas à la fiche
+  commande.
+
+### Les deux photos deviennent obligatoires
+
+Facultatives, elles n'auraient été prises que les jours calmes — c'est-à-dire
+jamais quand elles comptent.
+
+- **Photo de préparation** (`PreparatorController::ready`) : le client paie
+  d'avance des courses qu'il ne voit pas faire. C'est la promesse de qualité
+  rendue vérifiable, et la seule preuve d'Axizán si elle est contestée.
+- **Photo de remise** (`DeliveryController::confirm`) : « je n'ai rien reçu »
+  ne se tranche pas sur parole.
+- Les deux apparaissent sur la facture, comme deux moments distincts tous deux
+  opposables.
+
+*Deux bugs corrigés au passage.* Le front livreur envoyait `photo` et `notes`
+alors que l'API attend `proof_photo` et `delivery_notes` : **aucune preuve de
+remise n'a jamais été enregistrée**, le serveur les ignorait en silence. Et le
+champ photo du préparateur vivait à l'intérieur du bloc « dépôt » — sur un
+marché sans dépôt configuré, la photo devenant obligatoire, il aurait été
+définitivement incapable de déposer.
+
+`DeliveryController::confirm` autorise désormais **avant** de valider : sinon un
+inconnu apprenait la forme attendue du corps de requête avant qu'on lui dise
+que la livraison ne le regarde pas.

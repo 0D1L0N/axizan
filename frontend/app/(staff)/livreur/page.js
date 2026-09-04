@@ -198,8 +198,11 @@ function LivreurPage() {
 
   const handleConfirm = async () => {
     const form = new FormData();
-    if (photo) form.append('photo', photo);
-    if (notes.trim()) form.append('notes', notes.trim());
+    // Les noms des champs sont ceux de DeliveryController::confirm. Ils
+    // portaient auparavant « photo » et « notes » : le serveur les ignorait
+    // en silence, et aucune preuve de remise n'était jamais enregistrée.
+    form.append('proof_photo', photo);
+    if (notes.trim()) form.append('delivery_notes', notes.trim());
 
     const ok = await run(
       () => deliveryService.confirmDelivery(openDelivery.id, form),
@@ -359,20 +362,29 @@ function LivreurPage() {
               <section className="mt-4 rounded-panel border-2 border-forest-800/15 bg-white p-5">
                 <h3 className="font-bold text-ink-900">À la remise</h3>
 
+                {/* Photo obligatoire : « je n'ai rien reçu » ne se tranche pas
+                    sur parole. `capture` ouvre l'appareil photo directement. */}
                 <label className="mt-3 block">
                   <span className="text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-                    Photo de remise
+                    Photo de remise · obligatoire
                   </span>
                   <input
                     type="file"
                     accept="image/*"
                     capture="environment"
+                    required
                     onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-                    className="mt-2 block w-full text-base file:mr-3 file:h-14 file:rounded-card file:border-2 file:border-forest-800/20 file:bg-white file:px-5 file:font-bold file:text-forest-800"
+                    className={`mt-2 block w-full text-base file:mr-3 file:h-14 file:rounded-card file:border-2 file:bg-white file:px-5 file:font-bold file:text-forest-800 ${
+                      photo ? 'file:border-forest-800/20' : 'file:border-clay-500'
+                    }`}
                   />
-                  {photo && (
+                  {photo ? (
                     <span className="mt-2 flex items-center gap-2 font-bold text-forest-700">
                       <Camera size={17} /> {photo.name}
+                    </span>
+                  ) : (
+                    <span className="mt-2 block text-sm font-semibold text-clay-600">
+                      Photographiez le panier remis avant de confirmer.
                     </span>
                   )}
                 </label>
@@ -425,11 +437,17 @@ function LivreurPage() {
                 </button>
               ) : (
                 <button
-                  disabled={busy}
+                  disabled={busy || !photo}
                   onClick={handleConfirm}
-                  className="h-16 w-full rounded-full bg-gold-500 text-lg font-bold text-forest-950 disabled:opacity-60"
+                  className="h-16 w-full rounded-full bg-gold-500 text-lg font-bold text-forest-950 disabled:bg-ink-300 disabled:text-white"
                 >
-                  {busy ? <Loader2 className="mx-auto animate-spin" /> : 'Confirmer la remise'}
+                  {busy ? (
+                    <Loader2 className="mx-auto animate-spin" />
+                  ) : photo ? (
+                    'Confirmer la remise'
+                  ) : (
+                    'Photo de remise requise'
+                  )}
                 </button>
               )}
             </div>

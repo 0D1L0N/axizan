@@ -42,16 +42,24 @@ class OrderUpdateNotification extends Notification implements ShouldQueue
             $mail->line('Commande **'.$this->order->order_number.'** — '
                 .number_format((float) $this->order->total, 0, ',', ' ').' XOF');
 
-            // Le paiement se declare depuis la fiche commande : c'est la que
-            // le client doit atterrir, pas sur l'accueil.
-            $mail->action(
-                $this->type === NotificationType::ORDER_CREATED ? 'Payer ma commande' : 'Voir ma commande',
-                rtrim(config('app.frontend_url'), '/').'/orders/'.$this->order->id
-            );
+            // Chaque mail mene la ou l'action se fait : payer, suivre, ou
+            // recuperer sa facture. Renvoyer partout vers la fiche commande
+            // obligerait le client a chercher.
+            $base = rtrim(config('app.frontend_url'), '/').'/orders/'.$this->order->id;
+
+            $mail->action(...match ($this->type) {
+                NotificationType::ORDER_CREATED => ['Payer ma commande', $base],
+                NotificationType::ORDER_DELIVERED => ['Voir ma facture', $base.'/facture'],
+                default => ['Voir ma commande', $base],
+            });
         }
 
         if ($this->type === NotificationType::ORDER_CREATED) {
             $mail->line('Vos courses partent au marché dès que votre paiement est vérifié.');
+        }
+
+        if ($this->type === NotificationType::ORDER_DELIVERED) {
+            $mail->line('Votre facture est disponible en ligne, avec la photo de votre panier.');
         }
 
         return $mail->salutation('À bientôt sur le marché, l’équipe Axizán');

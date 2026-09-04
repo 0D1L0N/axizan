@@ -364,21 +364,25 @@ class PreparatorController extends Controller
             ], 422);
         }
 
+        // La photo du panier est OBLIGATOIRE.
+        //
+        // Le client paie d'avance des courses qu'il ne voit pas faire : c'est
+        // la promesse de qualite qui distingue Axizan d'une simple course.
+        // Cette photo est ce qui la rend verifiable — et la seule preuve
+        // d'Axizan si la qualite est contestee plus tard. Facultative, elle
+        // n'aurait ete prise que les jours calmes.
         $request->validate([
-            'photo' => 'nullable|image|max:5120',
+            'photo' => 'required|image|max:5120',
             'notes' => 'nullable|string|max:500',
         ], [
+            'photo.required' => 'Photographiez le panier avant de le déposer : c’est ce que le client verra.',
             'photo.image' => 'Le fichier doit être une image.',
             'photo.max' => 'Photo trop lourde (5 Mo maximum).',
         ]);
 
-        // Photo du panier : ce que le client recevra, date et horodate. C'est
-        // aussi la seule preuve d'Axizan si la qualite est contestee.
-        if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('preparations/'.$order->id, 'public');
-            $order->prep_photo_url = Storage::disk('public')->url($path);
-            $order->save();
-        }
+        $path = $request->file('photo')->store('preparations/'.$order->id, 'public');
+        $order->prep_photo_url = Storage::disk('public')->url($path);
+        $order->save();
 
         $removed = $order->items->where('collection_status', 'removed');
 

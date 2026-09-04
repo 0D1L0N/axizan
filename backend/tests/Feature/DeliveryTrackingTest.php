@@ -71,39 +71,78 @@ class DeliveryTrackingTest extends TestCase
         return $order;
     }
 
-    public function test_the_preparateur_can_attach_a_basket_photo(): void
+    public function test_the_preparateur_attaches_a_basket_photo(): void
     {
-        Storage::fake('public');
         $order = $this->readyOrder();
 
-        $this->postJson("/api/v1/preparateur/orders/{$order->id}/ready", [
-            '_method' => 'PATCH',
-            // create() plutot que image() : l'extension GD n'est pas installee,
-            // et l'application ne fait que stocker le fichier — elle ne le
-            // retaille pas. Inutile de l'ajouter a l'image de production.
-            'photo' => UploadedFile::fake()->create('panier.jpg', 120, 'image/jpeg'),
-        ])->assertOk();
+        $this->markReady($order->id)->assertOk();
 
         // Le client paie d'avance un retrait qu'il ne voit pas faire : cette
         // image est ce qui lui est montre.
         $this->assertNotNull($order->fresh()->prep_photo_url);
     }
 
-    public function test_the_basket_photo_must_be_an_image(): void
+    public function test_a_basket_cannot_be_dropped_off_without_a_photo(): void
     {
-        Storage::fake('public');
         $order = $this->readyOrder();
 
-        $this->postJson("/api/v1/preparateur/orders/{$order->id}/ready", [
-            '_method' => 'PATCH',
+        // La promesse d'Axizan porte sur la qualite du choix, pas seulement sur
+        // la livraison. Facultative, la photo n'aurait ete prise que les jours
+        // calmes — c'est-a-dire jamais quand elle compte.
+        $this->postJson("/api/v1/preparateur/orders/{$order->id}/ready", ['_method' => 'PATCH'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('photo');
+
+        $this->assertSame('preparing', $order->fresh()->status->value);
+    }
+
+    public function test_the_basket_photo_must_be_an_image(): void
+    {
+        $order = $this->readyOrder();
+
+        $this->markReady($order->id, [
             'photo' => UploadedFile::fake()->create('facture.pdf', 100, 'application/pdf'),
         ])->assertStatus(422)->assertJsonValidationErrors('photo');
+    }
+
+    public function test_a_delivery_cannot_be_confirmed_without_a_photo(): void
+    {
+        $order = $this->readyOrder();
+        $this->markReady($order->id)->assertOk();
+
+        Sanctum::actingAs($this->createStaff('livreur'), ['*']);
+        $deliveryId = $this->postJson("/api/v1/deliveries/{$order->id}/accept")->json('data.id');
+        $this->patchJson("/api/v1/deliveries/{$deliveryId}/start")->assertOk();
+
+        // « Je n'ai rien recu » ne se tranche pas sur parole.
+        $this->postJson("/api/v1/deliveries/{$deliveryId}/confirm", [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('proof_photo');
+
+        $this->assertSame('in_delivery', $order->fresh()->status->value);
+    }
+
+    public function test_confirming_a_delivery_stores_the_handover_photo(): void
+    {
+        $order = $this->readyOrder();
+        $this->markReady($order->id)->assertOk();
+
+        Sanctum::actingAs($this->createStaff('livreur'), ['*']);
+        $deliveryId = $this->postJson("/api/v1/deliveries/{$order->id}/accept")->json('data.id');
+        $this->patchJson("/api/v1/deliveries/{$deliveryId}/start")->assertOk();
+
+        $this->confirmDelivery($deliveryId)->assertOk();
+
+        $this->assertNotNull(Delivery::find($deliveryId)->proof_photo_url);
+        // La photo de preparation n'a pas ete ecrasee par celle de livraison :
+        // ce sont deux moments distincts, tous deux opposables.
+        $this->assertNotNull($order->fresh()->prep_photo_url);
     }
 
     public function test_the_livreur_sees_where_to_collect(): void
     {
         $order = $this->readyOrder($depot);
-        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/ready")->assertOk();
+        $this->markReady($order->id)->assertOk();
 
         Sanctum::actingAs($this->createStaff('livreur'), ['*']);
         $listed = $this->getJson('/api/v1/deliveries/ready-orders')->assertOk()->json('data.0');
@@ -115,7 +154,7 @@ class DeliveryTrackingTest extends TestCase
     public function test_starting_a_delivery_records_the_pickup_time(): void
     {
         $order = $this->readyOrder();
-        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/ready")->assertOk();
+        $this->markReady($order->id)->assertOk();
 
         $livreur = $this->createStaff('livreur');
         Sanctum::actingAs($livreur, ['*']);
@@ -134,7 +173,7 @@ class DeliveryTrackingTest extends TestCase
     public function test_the_client_sees_the_livreur_position_while_in_transit(): void
     {
         $order = $this->readyOrder();
-        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/ready")->assertOk();
+        $this->markReady($order->id)->assertOk();
 
         $livreur = $this->createStaff('livreur');
         Sanctum::actingAs($livreur, ['*']);
@@ -158,13 +197,13 @@ class DeliveryTrackingTest extends TestCase
     public function test_the_livreur_phone_is_hidden_once_the_run_is_over(): void
     {
         $order = $this->readyOrder();
-        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/ready")->assertOk();
+        $this->markReady($order->id)->assertOk();
 
         $livreur = $this->createStaff('livreur');
         Sanctum::actingAs($livreur, ['*']);
         $deliveryId = $this->postJson("/api/v1/deliveries/{$order->id}/accept")->json('data.id');
         $this->patchJson("/api/v1/deliveries/{$deliveryId}/start")->assertOk();
-        $this->postJson("/api/v1/deliveries/{$deliveryId}/confirm", [
+        $this->confirmDelivery($deliveryId, [
             'notes' => 'Remis en main propre',
         ])->assertOk();
 
@@ -178,7 +217,7 @@ class DeliveryTrackingTest extends TestCase
     public function test_another_livreur_cannot_push_a_position(): void
     {
         $order = $this->readyOrder();
-        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/ready")->assertOk();
+        $this->markReady($order->id)->assertOk();
 
         Sanctum::actingAs($this->createStaff('livreur'), ['*']);
         $deliveryId = $this->postJson("/api/v1/deliveries/{$order->id}/accept")->json('data.id');

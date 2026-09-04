@@ -13,7 +13,7 @@ import ProductImage from '@/app/components/ProductImage';
 import RemoteImage from '@/app/components/RemoteImage';
 import PaymentInstructions from '@/app/components/PaymentInstructions';
 import LivreurTracker from '@/app/components/LivreurTracker';
-import { ArrowLeft, MapPin, CalendarClock, CreditCard, MessageCircle, RotateCcw } from 'lucide-react';
+import { ArrowLeft, MapPin, CalendarClock, CreditCard, FileText, MessageCircle, RotateCcw } from 'lucide-react';
 import { useToast } from '@/app/contexts/ToastContext';
 import { whatsappAboutOrder } from '@/app/lib/contact';
 
@@ -313,6 +313,17 @@ function OrderDetailPage() {
             </div>
           </div>
         </section>
+
+        {/* La facture n'existe qu'une fois la marchandise remise : avant, le
+            contenu du panier peut encore changer au marché. */}
+        {['delivered', 'completed'].includes(order.status) && (
+          <Link
+            href={`/orders/${order.id}/facture`}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-forest-800/25 bg-white px-6 py-3.5 font-bold text-forest-800 transition hover:bg-cream-100"
+          >
+            <FileText size={17} /> Voir ma facture
+          </Link>
+        )}
 
         <section className="flex flex-col gap-3 sm:flex-row">
           <button

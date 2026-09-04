@@ -37,6 +37,8 @@ export const orderService = {
   getOrders: (params) => api.get('/orders', { params }),
   getOrder: (id) => api.get(`/orders/${id}`),
   cancelOrder: (id, reason) => api.delete(`/orders/${id}`, { data: { reason } }),
+  /** Facture d'une commande livrée. 409 tant que rien n'a été remis. */
+  getInvoice: (id) => api.get(`/orders/${id}/invoice`),
   /** Recharge le panier avec les articles d'une commande passee, aux prix du jour. */
   reorder: (id) => api.post(`/orders/${id}/reorder`),
   /** Le client declare avoir paye. Ne valide rien : un admin verifie ensuite. */

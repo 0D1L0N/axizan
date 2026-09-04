@@ -52,6 +52,11 @@ return [
     // Ne concerne que le repli manuel : avec FedaPay, c'est immediat.
     'validation_delay' => env('PAYMENT_VALIDATION_DELAY', 'moins de 30 minutes en journée'),
 
+    // Identite vendeur, telle qu'elle figure sur les factures.
+    'merchant_name' => env('PAY_MERCHANT_NAME', 'Axizán'),
+    'support_phone' => env('SUPPORT_PHONE', '+229 00 00 00 00'),
+    'support_email' => env('SUPPORT_EMAIL', 'contact@axizan.bj'),
+
     'methods' => [
         [
             'code' => 'mtn',

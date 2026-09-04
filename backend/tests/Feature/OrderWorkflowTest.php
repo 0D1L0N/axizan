@@ -71,7 +71,7 @@ class OrderWorkflowTest extends TestCase
             ])->assertOk();
         }
 
-        $this->patchJson("/api/v1/preparateur/orders/{$orderId}/ready")->assertOk();
+        $this->markReady($orderId)->assertOk();
         $this->assertDatabaseHas('orders', ['id' => $orderId, 'status' => 'ready']);
 
         // 4. Le livreur accepte, démarre puis confirme la livraison
@@ -83,7 +83,7 @@ class OrderWorkflowTest extends TestCase
         $this->patchJson("/api/v1/deliveries/{$deliveryId}/start")->assertOk();
         $this->assertDatabaseHas('orders', ['id' => $orderId, 'status' => 'in_delivery']);
 
-        $this->postJson("/api/v1/deliveries/{$deliveryId}/confirm", [
+        $this->confirmDelivery($deliveryId, [
             'delivery_notes' => 'Remis en main propre',
         ])->assertOk();
 

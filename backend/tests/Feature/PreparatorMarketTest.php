@@ -230,7 +230,7 @@ class PreparatorMarketTest extends TestCase
             'supplier_id' => $supplier->id,
         ])->assertOk();
 
-        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/ready")
+        $this->markReady($order->id)
             ->assertStatus(422)
             ->assertJsonPath('error', 'items_pending');
     }
@@ -249,7 +249,7 @@ class PreparatorMarketTest extends TestCase
         $item->update(['collection_status' => 'collected', 'collected_at' => now()]);
 
         // Sans fournisseur, le point avec les partenaires devient impossible.
-        $this->patchJson("/api/v1/preparateur/orders/{$order->id}/ready")
+        $this->markReady($order->id)
             ->assertStatus(422)
             ->assertJsonPath('error', 'supplier_missing');
     }
@@ -273,7 +273,7 @@ class PreparatorMarketTest extends TestCase
             'collection_status' => 'removed',
         ])->assertOk();
 
-        $response = $this->patchJson("/api/v1/preparateur/orders/{$order->id}/ready")->assertOk();
+        $response = $this->markReady($order->id)->assertOk();
 
         $this->assertSame(1, $response->json('meta.removed_count'));
         // Le client a paye cet article : l'admin doit pouvoir trancher le

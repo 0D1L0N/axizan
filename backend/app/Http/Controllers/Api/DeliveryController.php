@@ -159,17 +159,29 @@ class DeliveryController extends Controller
      */
     public function confirm($deliveryId, Request $request)
     {
-        $validated = $request->validate([
-            'proof_photo' => 'nullable|image|max:5120',
-            'signature_data' => 'nullable|string',
-            'delivery_notes' => 'nullable|string|max:500',
-        ]);
-
+        // L'autorisation avant la validation : sinon un inconnu qui tape cette
+        // route apprend la forme attendue du corps de requete avant meme
+        // qu'on lui dise que la livraison ne le regarde pas.
         $delivery = Delivery::find($deliveryId);
 
         if (!$delivery || $delivery->livreur_id !== $request->user()->id) {
             return response()->json(['success' => false, 'error' => 'not_found'], 404);
         }
+
+        // La photo est OBLIGATOIRE. C'est la seule preuve que le panier a bien
+        // ete remis, a la bonne personne, dans l'etat annonce. Sans elle, une
+        // contestation « je n'ai rien recu » ou « les tomates etaient
+        // ecrasees » ne peut se trancher que sur parole, et le client a paye
+        // d'avance des courses qu'il n'a pas vu faire.
+        $validated = $request->validate([
+            'proof_photo' => 'required|image|max:5120',
+            'signature_data' => 'nullable|string',
+            'delivery_notes' => 'nullable|string|max:500',
+        ], [
+            'proof_photo.required' => 'Photographiez la remise avant de confirmer : c’est la preuve de la livraison.',
+            'proof_photo.image' => 'Le fichier doit être une image.',
+            'proof_photo.max' => 'Photo trop lourde (5 Mo maximum).',
+        ]);
 
         try {
             $delivery = $this->deliveryService->confirmDelivery(

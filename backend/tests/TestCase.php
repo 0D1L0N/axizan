@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -46,5 +47,11 @@ abstract class TestCase extends BaseTestCase
 
         Cache::purge('array');
         RateLimiter::clear('');
+
+        // Photos de preparation et de livraison : obligatoires, donc presentes
+        // dans presque chaque parcours teste. Sans ce faux disque elles
+        // s'ecriraient pour de bon dans backend/storage/app/public, qui se
+        // remplirait de fichiers de test.
+        Storage::fake('public');
     }
 }

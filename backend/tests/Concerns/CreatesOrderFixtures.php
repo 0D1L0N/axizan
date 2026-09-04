@@ -113,6 +113,40 @@ trait CreatesOrderFixtures
         return $this->createStaff('preparateur', ['market_id' => $market->id]);
     }
 
+    /**
+     * Fichier image bidon.
+     *
+     * create() plutot que image() : l'extension GD n'est pas installee, et
+     * l'application ne fait que stocker le fichier — elle ne le retaille pas.
+     * Inutile d'alourdir l'image de production pour les tests.
+     */
+    protected function fakePhoto(string $name = 'panier.jpg'): \Illuminate\Http\UploadedFile
+    {
+        return \Illuminate\Http\UploadedFile::fake()->create($name, 120, 'image/jpeg');
+    }
+
+    /**
+     * Deposer le panier au depot. La photo est obligatoire : c'est ce que le
+     * client verra d'un retrait qu'il n'a pas vu faire.
+     *
+     * POST + _method : un envoi multipart ne passe pas en PATCH.
+     */
+    protected function markReady($orderId, array $extra = [])
+    {
+        return $this->postJson("/api/v1/preparateur/orders/{$orderId}/ready", array_merge([
+            '_method' => 'PATCH',
+            'photo' => $this->fakePhoto(),
+        ], $extra));
+    }
+
+    /** Confirmer la remise. La photo de livraison est obligatoire. */
+    protected function confirmDelivery($deliveryId, array $extra = [])
+    {
+        return $this->postJson("/api/v1/deliveries/{$deliveryId}/confirm", array_merge([
+            'proof_photo' => $this->fakePhoto('remise.jpg'),
+        ], $extra));
+    }
+
     protected function createProduct(array $overrides = []): Product
     {
         $category = Category::create(['name' => 'Catégorie ' . uniqid()]);
