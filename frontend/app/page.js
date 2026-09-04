@@ -211,7 +211,10 @@ export default function HomePage() {
               s'empilent — la thèse d'abord, ce qui est le bon ordre de lecture.
             */}
             <div className="grid gap-12 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20">
-              <div className="lg:sticky lg:top-16 lg:self-start">
+              {/* Pas de `sticky` ici : la colonne dépasse maintenant la hauteur
+                  d'un écran, et une colonne collante plus haute que la fenêtre
+                  rend son propre bas inatteignable. */}
+              <div>
                 <p className="eyebrow text-gold-500">Nos préparateurs</p>
                 <h2 className="mt-5 font-display text-display-sm font-semibold">
                   Bien acheter,
@@ -228,6 +231,40 @@ export default function HomePage() {
                   à la commande s’il fallait le remplacer ou le retirer&nbsp;— c’est votre consigne
                   qui tranche, pas la nôtre.
                 </p>
+
+                {/*
+                  Photographie d'ambiance, PAS un portrait de l'équipe.
+
+                  Le crédit sous l'image n'est pas de la coquetterie éditoriale :
+                  il dit ce que l'image est. Une photo achetée présentée comme
+                  « notre préparatrice » serait une affirmation fausse sur une
+                  personne réelle, et le premier client qui la reconnaîtrait
+                  ailleurs emporterait la crédibilité de toute la page.
+
+                  À remplacer par une vraie photo de vos préparatrices dès que
+                  vous en avez : c'est la seule image que personne d'autre ne
+                  peut avoir.
+                */}
+                <figure className="mt-10">
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-panel">
+                    <RemoteImage
+                      src="https://images.unsplash.com/photo-1575303093127-18b3c4ef8c41?auto=format&fit=crop&w=1200&q=90"
+                      alt="Vendeuse de piment derrière son étal, sur un marché ouest-africain"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 26rem"
+                      className="object-cover"
+                    />
+                    {/* Voile chaud : la photo entre dans le vert profond de la
+                        section au lieu de flotter dessus comme une vignette. */}
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-gradient-to-t from-forest-950/70 via-forest-950/10 to-transparent"
+                    />
+                  </div>
+                  <figcaption className="mt-3 text-xs leading-5 text-cream/40">
+                    Marché ouest-africain — photographie Omotayo Tajudeen
+                  </figcaption>
+                </figure>
               </div>
 
               {/*
