@@ -585,3 +585,74 @@ suggestion — visible, plutôt que cherché au mauvais endroit.
 
 Le marché de démonstration passe de 5 à 8 étals : la boucherie, les fruits et
 la boutique d'épicerie manquaient.
+
+## La salle de contrôle (5 sept. 2026)
+
+**179 tests, 767 assertions.** `/admin/commandes`.
+
+Trois constats avant de construire, tous du même ordre : **la donnée existait,
+rien ne savait la lire.**
+
+- Le journal des commandes comptait déjà 33 lignes. Chaque transition y est
+  enregistrée avec **son auteur** (`actor_id`, `actor_role`), d'où elle venait,
+  où elle allait, pourquoi. Aucun écran ne l'affichait.
+- La position des livreurs remonte toutes les 45 s. Le client la voyait ;
+  l'administration, non — aucune route n'y touchait.
+- Le catalogue est en lecture seule : **impossible de retirer un article
+  manquant sur le marché national**, alors que `is_available` est le seul
+  verrou à la commande depuis la suppression du contrôle de stock. *(Reste à
+  faire.)*
+
+### Ce qui ne bouge pas
+
+Une liste dit ce qui existe ; elle ne dit pas ce qui coince. `OrderWatchService`
+répond à la seconde question, et le signal retenu n'est pas une durée fixe mais
+le **temps qui reste avant le créneau**.
+
+Une commande acceptée depuis deux heures pour une livraison demain ne pose
+aucun problème ; la même, pour un créneau qui commence dans quarante minutes,
+en pose un grave. Un seuil en heures aurait alerté sur la première et laissé
+passer la seconde.
+
+Cinq situations sont détectées : payée que personne n'a prise, acceptée sans
+retrait commencé, retrait entamé puis abandonné (> 3 h), panier qui vieillit au
+dépôt sans livreur, créneau dépassé en cours de route.
+
+### La fiche
+
+Le journal déroulé avec ses auteurs, les contacts cliquables du préparateur et
+du livreur, les deux photos, et la position en course quand elle existe.
+
+### Débloquer
+
+Libérer vers le pool, réassigner, annuler — motif obligatoire, chaque geste
+journalisé au nom de l'administrateur.
+
+Deux garde-fous : un panier **déjà au dépôt ne peut plus être libéré** (le
+retrait est fait, le libérer laisserait le panier sans commande en face), et une
+réassignation **refuse un marché qui ne dessert pas la zone** — le préparateur
+ne verrait même pas la commande sur son écran.
+
+### Deux bugs corrigés en chemin
+
+**Le rendu d'une commande ne remettait pas à zéro les prix estampillés.**
+Introduit la veille avec le point fournisseur : une commande rendue gardait ses
+`actual_unit_price`, et le fournisseur aurait été payé pour une marchandise
+jamais sortie de l'étal.
+
+**Une annulation pouvait échouer à cause du remboursement.** `cancelOrder` se
+fiait à `orders.payment_status` pour décider de rembourser, puis appelait
+`refundPayment()` qui teste `payments.status`. Deux colonnes distinctes que rien
+ne garantit d'accord : dès qu'elles divergeaient, l'annulation entière partait
+en erreur et le client restait bloqué avec une commande impossible à annuler.
+L'annulation prime désormais sur l'écriture comptable qui la suit.
+
+### Reste à faire, par ordre d'utilité
+
+1. **Gestion du catalogue** — activer/retirer un article, corriger un prix,
+   ajouter une photo (27 produits sur 49 n'en ont pas).
+2. **Le personnel** — liste, charge du jour, suspension d'un compte. Un livreur
+   qui part garde aujourd'hui son accès à vie.
+3. **Les créneaux** — fermer un jour, ajuster une capacité, suspendre une zone.
+4. **Les chiffres** — la marge réelle est calculable depuis qu'on a les coûts
+   d'achat ; il manque les 1,80 % FedaPay dans `Order::grossMargin()`.

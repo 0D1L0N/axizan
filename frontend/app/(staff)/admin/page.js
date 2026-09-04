@@ -16,6 +16,7 @@ import {
   Loader2,
   RefreshCw,
   ShieldCheck,
+  Radar,
   Store,
   UserPlus,
 } from 'lucide-react';
@@ -430,12 +431,20 @@ function AdminPage() {
             Rien ne part en préparation tant qu’un paiement n’est pas retrouvé sur le compte marchand.
           </p>
 
-          <Link
-            href="/admin/fournisseurs"
-            className="mt-6 inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-bold text-cream transition hover:bg-cream/10"
-          >
-            <Store size={16} /> Le point fournisseur
-          </Link>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/admin/commandes"
+              className="inline-flex items-center gap-2 rounded-full bg-gold-500 px-5 py-2.5 text-sm font-bold text-forest-950 transition hover:bg-gold-400"
+            >
+              <Radar size={16} /> Salle de contrôle
+            </Link>
+            <Link
+              href="/admin/fournisseurs"
+              className="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-bold text-cream transition hover:bg-cream/10"
+            >
+              <Store size={16} /> Le point fournisseur
+            </Link>
+          </div>
 
           <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4">
             {[

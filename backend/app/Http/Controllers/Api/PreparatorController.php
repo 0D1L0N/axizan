@@ -310,35 +310,10 @@ class PreparatorController extends Controller
         $order->load('items');
         $alreadyPicked = $order->items->where('collection_status', '!=', 'pending');
 
-        DB::transaction(function () use ($order, $data, $request, $alreadyPicked) {
-            OrderEvent::record(
-                $order,
-                'order.released',
-                self::statusName($order->status),
-                OrderStatus::PENDING->value,
-                $data['reason'],
-                [
-                    'preparateur_id' => $request->user()->id,
-                    // On garde la trace de ce qui avait ete pointe : c'est ce
-                    // qui permettra de retrouver la marchandise.
-                    'items_already_picked' => $alreadyPicked->pluck('product_id')->all(),
-                ]
-            );
-
-            $order->items()->update([
-                'collection_status' => 'pending',
-                'supplier_id' => null,
-                'replacement_product_id' => null,
-                'collected_at' => null,
-            ]);
-
-            $order->update([
-                'status' => OrderStatus::PENDING,
-                'preparateur_id' => null,
-                'accepted_at' => null,
-                'preparing_started_at' => null,
-            ]);
-        });
+        // Le geste est le meme que celui de l'administrateur qui debloque une
+        // commande abandonnee : une seule implementation, et la trace dit
+        // lequel des deux l'a fait.
+        $this->orderService->releaseToPool($order, $data['reason'], $request->user());
 
         return response()->json([
             'success' => true,

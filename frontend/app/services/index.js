@@ -140,6 +140,17 @@ export const adminService = {
   validatePayment: (orderId, proof) => api.post(`/admin/orders/${orderId}/validate-payment`, proof),
   createStaff: (data) => api.post('/admin/staff', data),
 
+  /* ---- Salle de contrôle : ce qui tourne, et ce qui ne bouge pas ---- */
+
+  getOrders: (params) => api.get('/admin/orders', { params }),
+  getOrder: (id) => api.get(`/admin/orders/${id}`),
+  /** Préparateurs dont le marché dessert réellement la zone de livraison. */
+  getReassignCandidates: (id) => api.get(`/admin/orders/${id}/candidates`),
+  releaseOrder: (id, reason) => api.post(`/admin/orders/${id}/release`, { reason }),
+  reassignOrder: (id, preparateurId, reason) =>
+    api.post(`/admin/orders/${id}/reassign`, { preparateur_id: preparateurId, reason }),
+  cancelOrder: (id, reason) => api.post(`/admin/orders/${id}/cancel`, { reason }),
+
   /* ---- Le point fournisseur : ce qu'Axizán doit à chaque étal ---- */
 
   getSuppliers: (marketId) =>

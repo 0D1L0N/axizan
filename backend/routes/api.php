@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\RecurringBasketController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\FedapayController;
 use App\Http\Controllers\Api\SupplierSettlementController;
+use App\Http\Controllers\Api\AdminOrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -149,6 +150,14 @@ Route::prefix('v1')->group(function () {
             Route::get('/payments/pending', [AdminController::class, 'pendingPayments']);
             Route::post('/orders/{id}/validate-payment', [AdminController::class, 'validatePayment']);
             Route::post('/staff', [AdminController::class, 'createStaff']);
+
+            // Salle de contrôle : ce qui tourne, et surtout ce qui ne bouge pas.
+            Route::get('/orders', [AdminOrderController::class, 'index']);
+            Route::get('/orders/{id}', [AdminOrderController::class, 'show']);
+            Route::get('/orders/{id}/candidates', [AdminOrderController::class, 'candidates']);
+            Route::post('/orders/{id}/release', [AdminOrderController::class, 'release']);
+            Route::post('/orders/{id}/reassign', [AdminOrderController::class, 'reassign']);
+            Route::post('/orders/{id}/cancel', [AdminOrderController::class, 'cancel']);
 
             // Le point fournisseur : ce qu'Axizán doit à chaque étal.
             Route::get('/suppliers', [SupplierSettlementController::class, 'index']);

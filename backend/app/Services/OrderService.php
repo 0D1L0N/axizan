@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Models\OrderEvent;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
@@ -219,6 +220,61 @@ class OrderService
     /**
      * Annuler commande
      */
+    /**
+     * Renvoie la commande au pool du marche.
+     *
+     * Deux voies y menent : le preparateur qui rend ce qu'il ne peut pas
+     * honorer, et l'administrateur qui debloque une commande prise puis
+     * abandonnee. Le geste est le meme, la trace dit lequel des deux.
+     *
+     * La remise a zero couvre AUSSI les prix estampilles : une ligne rendue a
+     * ete deposee au pool sans avoir ete retiree, la facturer au fournisseur
+     * reviendrait a payer une marchandise jamais sortie de l'etal.
+     */
+    public function releaseToPool(Order $order, string $reason, User $actor): Order
+    {
+        $order->loadMissing('items');
+        $alreadyPicked = $order->items->where('collection_status', '!=', 'pending');
+
+        DB::transaction(function () use ($order, $reason, $actor, $alreadyPicked) {
+            OrderEvent::record(
+                $order,
+                'order.released',
+                $order->status instanceof \BackedEnum ? $order->status->value : (string) $order->status,
+                OrderStatus::PENDING->value,
+                $reason,
+                [
+                    'released_by' => $actor->id,
+                    'released_by_role' => $actor->role instanceof \BackedEnum
+                        ? $actor->role->value
+                        : (string) $actor->role,
+                    'preparateur_id' => $order->preparateur_id,
+                    // On garde la trace de ce qui avait ete pointe : c'est ce
+                    // qui permettra de retrouver la marchandise.
+                    'items_already_picked' => $alreadyPicked->pluck('product_id')->all(),
+                ]
+            );
+
+            $order->items()->update([
+                'collection_status' => 'pending',
+                'supplier_id' => null,
+                'replacement_product_id' => null,
+                'collected_at' => null,
+                'actual_unit_price' => null,
+                'actual_total_price' => null,
+            ]);
+
+            $order->update([
+                'status' => OrderStatus::PENDING,
+                'preparateur_id' => null,
+                'accepted_at' => null,
+                'preparing_started_at' => null,
+            ]);
+        });
+
+        return $order->fresh();
+    }
+
     public function cancelOrder(Order $order, $reason = null): Order
     {
         if (!$order->canBeCancelled()) {
@@ -234,8 +290,20 @@ class OrderService
             // Rien à libérer : une commande annulée est exclue du décompte de
             // capacité, la place se rouvre d'elle-même.
 
-            // Rembourser si nécessaire
-            if ($order->payment_status === 'completed') {
+            /*
+             * Rembourser quand il y a effectivement quelque chose a rembourser.
+             *
+             * Le test porte sur le PAIEMENT, pas sur `orders.payment_status` :
+             * ce sont deux colonnes distinctes, et rien ne garantit qu'elles
+             * disent la meme chose. Se fier a la seconde faisait echouer
+             * l'annulation entiere des qu'elles divergeaient — un client
+             * bloque avec une commande qu'on ne peut plus annuler, pour une
+             * incoherence interne qui ne le regarde pas.
+             *
+             * L'annulation prime : elle ne doit jamais echouer a cause de
+             * l'ecriture comptable qui la suit.
+             */
+            if ($order->payment?->status === \App\Enums\PaymentStatus::COMPLETED) {
                 $this->paymentService->refundPayment($order->payment);
             }
         });
