@@ -17,13 +17,12 @@ use Illuminate\Database\Seeder;
  * et le catalogue etait vide sans connexion.
  *
  * La regle de choix n'a pas change : une image n'est retenue que si elle
- * montre VRAIMENT le produit. Neuf articles restent donc sans photo, et
+ * montre VRAIMENT le produit. Huit articles restent donc sans photo, et
  * l'interface affiche pour eux un visuel de marque avec l'emoji de la
  * categorie :
  *
- *   Grande morelle (fotete), Aubergine africaine (gboma), Afitin, Crevettes
- *   sechees, Beurre de karite, Jus de baobab, Jus de tamarin, Tapioca,
- *   Eau minerale.
+ *   Grande morelle (fotete), Aubergine africaine (gboma), Afitin,
+ *   Crevettes sechees, Jus de baobab, Jus de tamarin, Tapioca, Eau minerale.
  *
  * Ce n'est pas un oubli. Ces produits n'existent pas dans les banques
  * d'images, et ce qu'on y trouve sous ces mots-la montre autre chose : de la
@@ -32,7 +31,10 @@ use Illuminate\Database\Seeder;
  * une photo qui ment sur la marchandise coute plus cher qu'une case vide —
  * surtout pour une marque qui promet de savoir choisir.
  *
- * Ces neuf-la attendent les photos d'Axizan, prises au marche.
+ * Ces huit-la attendent les photos d'Axizan, prises au marche.
+ *
+ * Une reserve de candidates est disponible dans
+ * `frontend/public/products/banque/` — voir son BANQUE.md.
  */
 class CatalogSeeder extends Seeder
 {
@@ -294,7 +296,8 @@ class CatalogSeeder extends Seeder
                 'description' => 'Huile neutre pour fritures et cuisson du quotidien.',
                 'image_url' => $this->img('photo-1666694890460-37ec16b0df47')],
             ['name' => 'Beurre de karité', 'category' => 'Huiles & pâtes', 'base_price' => 1500, 'price_type' => 'jar', 'stock_quantity' => 35, 'popularity_score' => 60,
-                'description' => 'Karité pur, pour la cuisine et les soins.'],
+                'description' => 'Karité pur, pour la cuisine et les soins.',
+                'image_url' => $this->img('photo-1638131163449-70059e10de6a')],
 
             // --------------------------------------------- Boissons locales
             ['name' => 'Jus de bissap', 'category' => 'Boissons locales', 'base_price' => 700, 'price_type' => 'piece', 'stock_quantity' => 100, 'is_bestseller' => true, 'popularity_score' => 85,

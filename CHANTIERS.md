@@ -701,3 +701,36 @@ La **gestion du catalogue** reste le blocage : téléverser une photo, activer o
 retirer un article, corriger un prix. Sans elle, les photos d'Axizán n'auront
 nulle part où aller — et un produit introuvable sur le marché national ne peut
 toujours pas être retiré de la plateforme.
+
+## Banque d'images ouest-africaine (5 sept. 2026)
+
+`frontend/public/products/banque/` — **24 photographies** libres d'usage
+commercial, téléchargées comme réserve pour le catalogue : étals de marché,
+plats ouest-africains, poisson séché, fruits du palmier, karité, hibiscus,
+légumes-feuilles, plantain.
+
+Elles ne sont rattachées à aucun produit : ce sont des candidates. Le manifeste
+`BANQUE.md` liste pour chacune la description écrite par son photographe et le
+lien vers la source.
+
+**Avertissement porté dans le manifeste** : je n'ai vu aucune de ces images. Les
+descriptions viennent des auteurs. Et aucune ne montre un produit spécifiquement
+béninois nommé — ni afitin, ni fotètè, ni gboma. Ces produits-là n'existent pas
+dans les banques d'images.
+
+Une seule comblait honnêtement un manque : des pots de beurre de karité d'une
+marque ghanéenne. Rattachée. **41 articles sur 49 ont désormais une photo.**
+
+## Vérification : la preuve photo du préparateur
+
+Contrôlé de bout en bout, rien à construire — la chaîne fonctionnait déjà :
+
+- `PreparatorController::ready()` exige la photo (`required|image|max:5120`) ;
+  sans elle le dépôt est refusé.
+- Elle est stockée sur le disque `public`, dans `preparations/{commande}/`.
+- Servie via le proxy `/storage/*` du front vers Laravel : **200** des deux
+  côtés, testé avec un vrai fichier.
+- L'administration la voit sur la fiche commande (`/admin/commandes`), à côté de
+  la photo de remise du livreur.
+
+Le client la voit également sur sa commande et sur sa facture.
