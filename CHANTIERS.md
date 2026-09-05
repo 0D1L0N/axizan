@@ -792,3 +792,54 @@ cela, `../../.env` pointait où il voulait sur le disque. Testé.
 conserves. **Une commande ne coûtera pas 1 XOF** : les frais de livraison
 s'ajoutent — 800 XOF à Cotonou Centre, 1 200 à Porto-Novo. Le plancher réel est
 801 XOF, en argent réel puisque les clés FedaPay sont des clés live.
+
+## Gestion des clients (5 sept. 2026)
+
+**211 tests, 882 assertions.** `/admin/clients`.
+
+Rien n'existait : ni liste, ni historique, ni moyen de suspendre un compte.
+
+### Le bug qui rendait la suspension décorative
+
+`users.status` était écrit à l'inscription et **lu nulle part**. Suspendre un
+compte n'aurait rien fait — exactement la même classe de bug que l'article
+« retiré de la vente » qui restait en boutique.
+
+Deux verrous posés, et le second est le vrai :
+
+- La **connexion** refuse un compte suspendu, avec un message distinct de
+  « identifiants incorrects » : la personne doit savoir qu'il est inutile de
+  réessayer son mot de passe.
+- Un **middleware `active`** sur toutes les routes authentifiées. Bloquer la
+  seule connexion n'aurait pas suffi : les jetons Sanctum vivent **trente
+  jours**, et un compte suspendu aurait continué de commander pendant tout ce
+  temps. Le jeton courant est détruit au passage, et la suspension révoque tous
+  les jetons du compte.
+
+Le verrou porte sur l'authentification, pas sur le rôle : un livreur qui rend
+son tablier perd aussi ses accès.
+
+### Les impayés — la définition fait tout
+
+Une commande non payée **pour demain** n'est pas un impayé : le client a le
+temps. Une commande non payée **dont le créneau est passé** en est un — elle a
+occupé une place que personne d'autre n'a pu prendre, et la capacité des
+créneaux est le stock réel d'Axizán.
+
+Les commandes annulées ne comptent pas : elles ont libéré leur place.
+
+### La fiche
+
+Ce qu'on ouvre quand quelqu'un appelle : téléphone cliquable, adresses avec
+leur zone, historique complet, et les chiffres qui comptent — total **réellement
+payé**, panier moyen sur les seules commandes payées, nombre d'impayés et leur
+montant. Une moyenne calculée sur tout inclurait des commandes qui n'ont jamais
+rapporté un franc.
+
+### Bug de fabrique corrigé
+
+`UserFactory` ne renseignait pas `status`. La colonne a pourtant `active` comme
+défaut en base — mais Laravel ne relit pas les valeurs par défaut après
+l'insertion, et le modèle en mémoire portait `null`. Le nouveau middleware
+rejetait donc des utilisateurs que la base considère comme actifs. Même piège
+que `is_available` à la création d'un produit.

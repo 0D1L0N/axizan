@@ -20,6 +20,7 @@ import {
   Radar,
   Store,
   UserPlus,
+  Users,
 } from 'lucide-react';
 
 const PROVIDERS = [
@@ -438,6 +439,12 @@ function AdminPage() {
               className="inline-flex items-center gap-2 rounded-full bg-gold-500 px-5 py-2.5 text-sm font-bold text-forest-950 transition hover:bg-gold-400"
             >
               <Radar size={16} /> Salle de contrôle
+            </Link>
+            <Link
+              href="/admin/clients"
+              className="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-bold text-cream transition hover:bg-cream/10"
+            >
+              <Users size={16} /> Clients
             </Link>
             <Link
               href="/admin/catalogue"

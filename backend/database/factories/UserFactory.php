@@ -29,6 +29,16 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            /*
+             * Explicite, alors que la colonne a deja `active` comme defaut.
+             *
+             * Laravel ne relit pas les valeurs par defaut apres l'insertion :
+             * le modele en memoire porterait `null`, et le middleware qui
+             * verifie l'activite du compte rejetterait un utilisateur que la
+             * base considere pourtant comme actif. Un test echouerait alors
+             * pour une raison qui n'existe pas en production.
+             */
+            'status' => 'active',
         ];
     }
 

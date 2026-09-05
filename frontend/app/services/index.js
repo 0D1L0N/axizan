@@ -140,6 +140,14 @@ export const adminService = {
   validatePayment: (orderId, proof) => api.post(`/admin/orders/${orderId}/validate-payment`, proof),
   createStaff: (data) => api.post('/admin/staff', data),
 
+  /* ---- Les clients : la fiche, et les impayés ---- */
+
+  getClients: (params) => api.get('/admin/clients', { params }),
+  getClient: (id) => api.get(`/admin/clients/${id}`),
+  /** Suspendre coupe la connexion ET détruit les jetons en cours. */
+  setClientSuspended: (id, suspended, reason) =>
+    api.patch(`/admin/clients/${id}/status`, { suspended, reason }),
+
   /* ---- Le catalogue : retirer, corriger, illustrer ---- */
 
   getCatalogue: (params) => api.get('/admin/catalogue', { params }),

@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\FedapayController;
 use App\Http\Controllers\Api\SupplierSettlementController;
 use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\AdminProductController;
+use App\Http\Controllers\Api\AdminClientController;
 
 /*
 |--------------------------------------------------------------------------
@@ -58,7 +59,10 @@ Route::prefix('v1')->group(function () {
     Route::get('/delivery-slots', [LogisticsController::class, 'slots']);
 
     // Routes protégées (authentification requise)
-    Route::middleware('auth:sanctum')->group(function () {
+    // `active` accompagne systematiquement l'authentification : un compte
+    // suspendu garde un jeton valide jusqu'a trente jours, et continuerait de
+    // commander si le controle ne se faisait qu'a la connexion.
+    Route::middleware(['auth:sanctum', 'active'])->group(function () {
         
         // Auth
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -151,6 +155,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/payments/pending', [AdminController::class, 'pendingPayments']);
             Route::post('/orders/{id}/validate-payment', [AdminController::class, 'validatePayment']);
             Route::post('/staff', [AdminController::class, 'createStaff']);
+
+            // Clients : la fiche qu'on ouvre quand quelqu'un appelle, et les
+            // commandes restées impayées après leur créneau.
+            Route::get('/clients', [AdminClientController::class, 'index']);
+            Route::get('/clients/{id}', [AdminClientController::class, 'show']);
+            Route::patch('/clients/{id}/status', [AdminClientController::class, 'setStatus']);
 
             // Catalogue : retirer un article introuvable, corriger un prix,
             // poser une photo. Rien ne se supprime — les factures pointent dessus.

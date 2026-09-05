@@ -76,6 +76,17 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Un compte suspendu ne reçoit pas de nouveau jeton. Le message est
+        // distinct de « identifiants incorrects » : la personne doit savoir
+        // qu'il ne sert à rien de réessayer son mot de passe.
+        if ($user->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'error' => 'account_suspended',
+                'message' => 'Ce compte est suspendu. Contactez Axizán.',
+            ], 403);
+        }
+
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
