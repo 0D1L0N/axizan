@@ -100,6 +100,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [OrderController::class, 'index']);
             Route::get('/{id}', [OrderController::class, 'show']);
             Route::delete('/{id}', [OrderController::class, 'cancel']);
+            // Le client accepte ou refuse un remplacement, tant que le panier
+            // n'a pas quitté le marché.
+            Route::post('/{id}/items/{itemId}/substitution', [OrderController::class, 'respondToSubstitution']);
             Route::get('/{id}/invoice', [OrderController::class, 'invoice']);
             Route::post('/{id}/reorder', [OrderController::class, 'reorder']);
             Route::post('/{id}/declare-payment', [OrderController::class, 'declarePayment']);

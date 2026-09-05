@@ -25,6 +25,9 @@ enum NotificationType: string
     /** Un panier vient d'etre depose au depot : il attend un livreur. */
     case BASKET_AT_DEPOT = 'basket_at_depot';
 
+    /** Un article a ete remplace ou retire au marche : le client doit le savoir. */
+    case ITEM_SUBSTITUTED = 'item_substituted';
+
     public function getLabel(): string
     {
         return match ($this) {
@@ -38,6 +41,7 @@ enum NotificationType: string
             self::PAYMENT_CONFIRMED => 'Paiement confirmé',
             self::DELIVERY_ASSIGNED => 'Livraison assignée',
             self::BASKET_AT_DEPOT => 'Panier au dépôt',
+            self::ITEM_SUBSTITUTED => 'Article remplacé au marché',
         };
     }
 }

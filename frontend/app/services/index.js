@@ -37,6 +37,14 @@ export const orderService = {
   getOrders: (params) => api.get('/orders', { params }),
   getOrder: (id) => api.get(`/orders/${id}`),
   cancelOrder: (id, reason) => api.delete(`/orders/${id}`, { data: { reason } }),
+  /**
+   * Accepter ou refuser un remplacement décidé au marché.
+   *
+   * Possible tant que le panier n'a pas quitté le marché : passé le dépôt, le
+   * préparateur est parti et l'article est dans le panier.
+   */
+  respondToSubstitution: (orderId, itemId, response) =>
+    api.post(`/orders/${orderId}/items/${itemId}/substitution`, { response }),
   /** Facture d'une commande livrée. 409 tant que rien n'a été remis. */
   getInvoice: (id) => api.get(`/orders/${id}/invoice`),
   /** Pousse une demande Mobile Money : le téléphone du client sonne. */

@@ -68,6 +68,46 @@ class NotificationService
     }
 
     /**
+     * Un article vient d'etre remplace ou retire au marche.
+     *
+     * Le client apprenait jusqu'ici a la livraison qu'un produit avait change.
+     * Il le sait maintenant pendant que le preparateur est encore a l'etal, et
+     * peut refuser.
+     *
+     * UN SEUL SMS PAR COMMANDE. Trois articles remplaces, c'est trois traces
+     * in-app mais un seul message : le SMS ne sert qu'a le faire ouvrir
+     * l'application, et trois messages coutent trois fois le prix pour dire la
+     * meme chose. Les suivants restent in-app.
+     */
+    public function sendItemSubstitutedNotification(Order $order, \App\Models\OrderItem $item): void
+    {
+        $alreadyWarned = $order->items()
+            ->whereNotNull('substitution_notified_at')
+            ->where('id', '!=', $item->id)
+            ->exists();
+
+        $product = $item->product?->name ?? 'Un article';
+
+        $message = $item->collection_status === 'replaced'
+            ? "{$product} manquait au marché. Nous avons pris "
+                .($item->replacementProduct?->name ?? 'un produit équivalent')
+                .' à la place. Ouvrez Axizán pour accepter ou refuser.'
+            : "{$product} est introuvable au marché aujourd’hui. Il ne sera pas dans votre panier.";
+
+        $this->notify(
+            $order->client,
+            NotificationType::ITEM_SUBSTITUTED,
+            $item->collection_status === 'replaced' ? 'Article remplacé' : 'Article introuvable',
+            $message,
+            ['order_id' => $order->id, 'order_item_id' => $item->id],
+            // Le premier porte le SMS ; les suivants restent in-app.
+            forceInAppOnly: $alreadyWarned
+        );
+
+        $item->forceFill(['substitution_notified_at' => now()])->save();
+    }
+
+    /**
      * Un panier vient d'arriver au depot : prevenir les livreurs.
      *
      * Le preparateur ne remet rien en main propre — il depose, puis repart
@@ -166,7 +206,13 @@ class NotificationService
     /**
      * Créer une notification générique
      */
-    public function notify(User $user, NotificationType $type, $title, $message, $data = [])
+    /**
+     * @param bool $forceInAppOnly N'ecrit que la trace consultable, sans mail
+     *                             ni SMS. Sert quand un meme evenement se
+     *                             repete dans une commande et qu'un seul
+     *                             message suffit a faire ouvrir l'application.
+     */
+    public function notify(User $user, NotificationType $type, $title, $message, $data = [], bool $forceInAppOnly = false)
     {
         $notification = Notification::create([
             'user_id' => $user->id,
@@ -179,7 +225,7 @@ class NotificationService
 
         // L'in-app est toujours ecrit ; mail et SMS suivent le routage par
         // type (config/notifications.php) et les preferences du client.
-        $channels = config('notifications.channels.'.$type->value, []);
+        $channels = $forceInAppOnly ? [] : config('notifications.channels.'.$type->value, []);
         $order = isset($data['order_id']) ? Order::find($data['order_id']) : null;
 
         if (in_array('mail', $channels, true) && $this->allows($user, $type, 'email')) {

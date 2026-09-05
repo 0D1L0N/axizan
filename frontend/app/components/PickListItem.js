@@ -77,9 +77,16 @@ export default function PickListItem({ item, suppliers, products, onUpdate, disa
             </p>
           )}
 
-          {status === 'removed' && (
-            <p className="mt-1.5 text-sm font-bold text-ink-500">Retiré — indisponible</p>
-          )}
+          {status === 'removed' &&
+            // Distinguer les deux : si le client a refusé le remplacement, le
+            // préparateur a le produit en main et doit le reposer.
+            (item.substitution_response === 'refused' ? (
+              <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-clay-200 px-3 py-1 text-sm font-bold text-clay-600">
+                <X size={14} strokeWidth={3} /> Le client a refusé — reposez-le
+              </p>
+            ) : (
+              <p className="mt-1.5 text-sm font-bold text-ink-500">Retiré — indisponible</p>
+            ))}
 
           {/* La consigne du client, visible avant de decider. */}
           {status === 'pending' && (

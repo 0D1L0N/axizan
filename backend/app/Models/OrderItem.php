@@ -22,6 +22,9 @@ class OrderItem extends Model
         'special_instructions',
         'removed_ingredients',
         'substitution_preference',
+        'substitution_notified_at',
+        'substitution_response',
+        'substitution_responded_at',
         'supplier_id',
         'settlement_id',
         'replacement_product_id',
@@ -38,6 +41,8 @@ class OrderItem extends Model
         'actual_total_price' => 'decimal:2',
         'removed_ingredients' => 'array',
         'collected_at' => 'datetime',
+        'substitution_notified_at' => 'datetime',
+        'substitution_responded_at' => 'datetime',
     ];
 
     /** Chez qui cette ligne a ete retiree. Base du futur point fournisseur. */

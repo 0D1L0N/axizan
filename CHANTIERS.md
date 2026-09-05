@@ -961,3 +961,55 @@ icône de carte.
 
 *Vérifié au passage* : les trois commandes en attente portant une transaction
 FedaPay sont toutes `canceled` côté opérateur. Personne n'a été débité.
+
+## Le remplacement en direct (5 sept. 2026)
+
+**225 tests, 943 assertions.**
+
+Jusqu'ici, le client indiquait à la commande ce qu'il fallait faire d'un
+article introuvable — remplacer ou retirer — puis **n'apprenait plus rien
+jusqu'à la livraison**. Il découvrait dans son panier un produit qu'il n'avait
+pas choisi. Aucune notification ne partait.
+
+C'est le manque que révélait la comparaison avec Instacart, dont c'est
+l'innovation centrale.
+
+### Le parti pris : prévenir et laisser contester
+
+**Pas « demander et attendre ».** Le préparateur est debout à l'étal, sur un
+réseau capricieux. L'immobiliser en attendant la réponse d'un client peut-être
+en réunion, téléphone au fond d'un sac, coûterait plus cher que le problème
+qu'on résout.
+
+Il décide donc, le client est prévenu dans la seconde, et peut refuser **tant
+que le panier n'a pas quitté le marché**. Sans réponse, la décision du
+préparateur tient — c'est la seule règle qui fonctionne quand l'un des deux n'a
+pas de réseau.
+
+### La fenêtre
+
+Elle s'arrête au dépôt. Passé ce point, le préparateur est parti et l'article
+est dans le panier : refuser promettrait au client quelque chose qu'on ne peut
+plus tenir. L'écran le dit, et l'API refuse (422 `window_closed`).
+
+### Un seul SMS par commande
+
+Le SMS est assumé malgré son coût : la fenêtre est courte, et une notification
+in-app que le client ne verrait qu'en rouvrant l'application arriverait trop
+tard. C'est exactement le cas prévu par la règle de `config/notifications.php` —
+son inaction a une conséquence.
+
+Mais **un seul par commande**, même si trois articles changent. Le SMS ne sert
+qu'à faire ouvrir l'application ; trois messages coûteraient trois fois le prix
+pour dire la même chose. Les suivants restent in-app.
+
+### Refuser efface aussi la dette fournisseur
+
+Un remplacement refusé remet la ligne à zéro : plus de fournisseur, plus de prix
+estampillé. Rien n'est sorti de l'étal — le facturer au partenaire reviendrait à
+payer une marchandise jamais retirée.
+
+### Le préparateur le voit
+
+Sa liste distingue « retiré — indisponible » de **« le client a refusé —
+reposez-le »**. Dans le second cas il a le produit en main.

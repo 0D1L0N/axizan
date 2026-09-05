@@ -202,6 +202,26 @@ class PreparatorController extends Controller
             'collected_at' => $collected ? now() : null,
         ], $this->supplierCost($item, $data, $collected)));
 
+        $item->refresh();
+
+        /*
+         * Prevenir le client, tout de suite.
+         *
+         * Il apprenait jusqu'ici a la livraison qu'un produit avait change. Il
+         * le sait maintenant pendant que le preparateur est encore a l'etal —
+         * et peut refuser tant que le panier n'a pas quitte le marche.
+         *
+         * Le preparateur, lui, n'attend rien : il enchaine. Bloquer sa tournee
+         * en attendant la reponse d'un client peut-etre en reunion couterait
+         * plus cher que le probleme qu'on resout.
+         */
+        if (in_array($item->collection_status, ['replaced', 'removed'], true)) {
+            $item->loadMissing('product:id,name', 'replacementProduct:id,name');
+
+            app(\App\Services\NotificationService::class)
+                ->sendItemSubstitutedNotification($order->loadMissing('client'), $item);
+        }
+
         return response()->json([
             'success' => true,
             'data' => $item->fresh()->load('product', 'supplier:id,name,stall', 'replacementProduct:id,name,price_type'),

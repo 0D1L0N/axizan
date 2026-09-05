@@ -342,6 +342,77 @@ class OrderController extends Controller
     }
 
     /**
+     * Le client repond a un remplacement, pendant qu'il a encore lieu.
+     *
+     * La fenetre s'arrete quand le panier quitte le marche : passe le depot, le
+     * preparateur est parti, l'article est dans le panier et refuser ne ferait
+     * que promettre au client quelque chose qu'on ne peut plus tenir.
+     *
+     * Refuser retire l'article. Le client ne paiera pas ce qu'il n'a pas voulu
+     * — le montant du : la facture le porte deja comme non livre.
+     */
+    public function respondToSubstitution(Request $request, $id, $itemId)
+    {
+        $data = $request->validate([
+            'response' => ['required', Rule::in(['accepted', 'refused'])],
+        ]);
+
+        $order = Order::with('items.product:id,name')->find($id);
+
+        if (! $order || $order->client_id !== $request->user()->id) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
+
+        $item = $order->items->firstWhere('id', (int) $itemId);
+
+        if (! $item || ! in_array($item->collection_status, ['replaced', 'removed'], true)) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
+
+        if ($order->status !== OrderStatus::PREPARING) {
+            return response()->json([
+                'success' => false,
+                'error' => 'window_closed',
+                'message' => 'Votre panier a déjà quitté le marché : ce choix n’est plus modifiable.',
+            ], 422);
+        }
+
+        if ($data['response'] === 'accepted') {
+            $item->update([
+                'substitution_response' => 'accepted',
+                'substitution_responded_at' => now(),
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'C’est noté, merci.']);
+        }
+
+        // Refus : l'article sort du panier, et le preparateur doit le savoir
+        // avant de quitter l'etal.
+        $item->update([
+            'collection_status' => 'removed',
+            'replacement_product_id' => null,
+            'supplier_id' => null,
+            'collected_at' => null,
+            // Rien n'est sorti de l'etal : le facturer au fournisseur
+            // reviendrait a payer une marchandise jamais retiree.
+            'actual_unit_price' => null,
+            'actual_total_price' => null,
+            'substitution_response' => 'refused',
+            'substitution_responded_at' => now(),
+        ]);
+
+        OrderEvent::record($order, 'substitution.refused', reason: 'Remplacement refusé par le client', context: [
+            'order_item_id' => $item->id,
+            'product' => $item->product?->name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Retiré de votre panier. Vous ne le paierez pas.',
+        ]);
+    }
+
+    /**
      * Facture d'une commande livree.
      *
      * Rien n'est stocke : la facture est calculee a partir de la commande,

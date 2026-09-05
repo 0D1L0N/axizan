@@ -51,6 +51,21 @@ return [
         // in-app uniquement. Un SMS par panier et par livreur couterait le
         // prix d'une course, et le premier arrive prend de toute facon.
         NotificationType::BASKET_AT_DEPOT->value => [],
+
+        /*
+         * Un article vient d'etre remplace ou retire au marche.
+         *
+         * SMS assume, malgre le cout. Le client a une fenetre courte pour
+         * refuser — le temps que le preparateur soit encore a l'etal — et une
+         * notification in-app qu'il ne verra qu'en rouvrant l'application
+         * arriverait trop tard. C'est exactement le cas prevu par la regle
+         * ci-dessus : son inaction a une consequence, il recevra un produit
+         * qu'il n'a pas choisi.
+         *
+         * Un SEUL SMS par commande, meme si trois articles changent : voir
+         * NotificationService::sendItemSubstitutedNotification().
+         */
+        NotificationType::ITEM_SUBSTITUTED->value => ['sms'],
     ],
 
     // Types que le client ne peut pas desactiver : ils concernent son argent

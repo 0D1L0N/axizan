@@ -12,6 +12,7 @@ import { formatQuantity, formatPrice } from '@/app/lib/units';
 import ProductImage from '@/app/components/ProductImage';
 import RemoteImage from '@/app/components/RemoteImage';
 import PaymentInstructions from '@/app/components/PaymentInstructions';
+import SubstitutionChoice from '@/app/components/SubstitutionChoice';
 import LivreurTracker from '@/app/components/LivreurTracker';
 import { ArrowLeft, MapPin, CalendarClock, CreditCard, FileText, MessageCircle, RotateCcw } from 'lucide-react';
 import { useToast } from '@/app/contexts/ToastContext';
@@ -277,26 +278,49 @@ function OrderDetailPage() {
         <section className="rounded-2xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-bold">Articles ({order.items?.length ?? 0})</h2>
           <div className="divide-y divide-cream-200">
-            {(order.items || []).map((item) => (
-              <div key={item.id} className="flex items-center gap-4 py-3">
-                <ProductImage
-                  product={item.product || { name: `Produit #${item.product_id}` }}
-                  size="thumb"
-                  emojiSize="text-xl"
-                  className="h-14 w-14 shrink-0 rounded-xl object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{item.product?.name || `Produit #${item.product_id}`}</p>
-                  <p className="text-sm text-ink-500">
-                    {formatQuantity(item.quantity, item.product?.price_type)} ·{' '}
-                    {item.substitution_preference === 'remove'
-                      ? 'à retirer si absent au marché'
-                      : 'à remplacer si absent au marché'}
-                  </p>
+            {(order.items || []).map((item) => {
+              const substituted = ['replaced', 'removed'].includes(item.collection_status);
+
+              return (
+                <div key={item.id} className="py-3">
+                  <div className="flex items-center gap-4">
+                    <ProductImage
+                      product={item.product || { name: `Produit #${item.product_id}` }}
+                      size="thumb"
+                      emojiSize="text-xl"
+                      className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">{item.product?.name || `Produit #${item.product_id}`}</p>
+                      <p className="text-sm text-ink-500">
+                        {formatQuantity(item.quantity, item.product?.price_type)}
+                        {/* La consigne n'a plus d'intérêt une fois qu'elle a
+                            servi : ce qui compte alors, c'est ce qui s'est
+                            réellement passé au marché. */}
+                        {!substituted && (
+                          <>
+                            {' · '}
+                            {item.substitution_preference === 'remove'
+                              ? 'à retirer si absent au marché'
+                              : 'à remplacer si absent au marché'}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <p className="font-semibold">{formatPrice(item.total_price)}</p>
+                  </div>
+
+                  {substituted && (
+                    <SubstitutionChoice
+                      orderId={order.id}
+                      item={item}
+                      open={order.status === 'preparing'}
+                      onAnswered={load}
+                    />
+                  )}
                 </div>
-                <p className="font-semibold">{formatPrice(item.total_price)}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-4 space-y-1 border-t border-cream-200 pt-4 text-sm">
