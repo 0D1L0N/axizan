@@ -140,6 +140,28 @@ export const adminService = {
   validatePayment: (orderId, proof) => api.post(`/admin/orders/${orderId}/validate-payment`, proof),
   createStaff: (data) => api.post('/admin/staff', data),
 
+  /* ---- Le catalogue : retirer, corriger, illustrer ---- */
+
+  getCatalogue: (params) => api.get('/admin/catalogue', { params }),
+  getCatalogueCategories: () => api.get('/admin/catalogue/categories'),
+  /** Photos disponibles dans la banque, avec les articles qui les utilisent déjà. */
+  getPhotoLibrary: () => api.get('/admin/catalogue/banque'),
+  createProduct: (data) => api.post('/admin/catalogue', data),
+  updateProduct: (id, data) => api.patch(`/admin/catalogue/${id}`, data),
+  /** Retire de la vente, ou y remet. Réversible d'un clic. */
+  setProductAvailability: (id, isAvailable) =>
+    api.patch(`/admin/catalogue/${id}/availability`, { is_available: isAvailable }),
+  /** Archive : sort du catalogue sans trouer l'historique des commandes. */
+  setProductArchived: (id, archived) =>
+    api.patch(`/admin/catalogue/${id}/archive`, { archived }),
+  /** `form` vient de buildPhotoUpload() : image réduite dans le navigateur. */
+  uploadProductPhoto: (id, form) =>
+    api.post(`/admin/catalogue/${id}/photo`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  assignLibraryPhoto: (id, file) => api.post(`/admin/catalogue/${id}/photo-banque`, { file }),
+  removeProductPhoto: (id) => api.delete(`/admin/catalogue/${id}/photo`),
+
   /* ---- Salle de contrôle : ce qui tourne, et ce qui ne bouge pas ---- */
 
   getOrders: (params) => api.get('/admin/orders', { params }),

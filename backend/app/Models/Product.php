@@ -65,10 +65,20 @@ class Product extends Model
         return $query->where('category_id', $categoryId);
     }
 
+    /**
+     * Recherche sur le nom ou la description.
+     *
+     * Le groupement n'est pas cosmetique : sans lui, le `orWhere` remonte au
+     * niveau de la requete entiere et annule tout ce qui precede. Une recherche
+     * dans une categorie renvoyait alors des articles des autres categories,
+     * des que leur description contenait le mot.
+     */
     public function scopeSearch($query, $search)
     {
-        return $query->where('name', 'like', "%{$search}%")
-            ->orWhere('description', 'like', "%{$search}%");
+        return $query->where(function ($sub) use ($search) {
+            $sub->where('name', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%");
+        });
     }
 
     public function scopeLowStock($query)

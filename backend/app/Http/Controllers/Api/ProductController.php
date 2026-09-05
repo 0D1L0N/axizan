@@ -14,16 +14,25 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::query()->with('category');
+        /*
+         * La boutique ne montre QUE ce qui est commandable.
+         *
+         * Jusqu'ici le filtre etait facultatif (`?available=1`) et aucun ecran
+         * ne le passait : un article retire de la vente restait affiche, et le
+         * client ne l'apprenait qu'au moment de commander, par une erreur.
+         * Retirer un produit du catalogue ne retirait donc rien.
+         *
+         * `is_available` est le seul verrou de la commande (voir OrderService) :
+         * la vitrine doit dire la meme chose que la caisse.
+         */
+        $query = Product::query()
+            ->with('category')
+            ->available()
+            ->where('status', 'active');
 
         // Filtrer par catégorie
         if ($request->has('category')) {
             $query->where('category_id', $request->category);
-        }
-
-        // Filtrer par disponibilité
-        if ($request->boolean('available')) {
-            $query->available();
         }
 
         // Bestsellers
@@ -72,7 +81,14 @@ class ProductController extends Controller
      */
     public function show($id)
     {
-        $product = Product::with('category')->find($id);
+        // Meme regle que la liste : un article retire de la vente n'a pas de
+        // fiche publique. Sans ce filtre, un lien partage ou un favori
+        // continuait d'ouvrir la fiche d'un produit qu'on ne peut plus
+        // commander — et le bouton « ajouter au panier » y menait a une erreur.
+        $product = Product::with('category')
+            ->available()
+            ->where('status', 'active')
+            ->find($id);
 
         if (!$product) {
             return response()->json([

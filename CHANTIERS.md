@@ -734,3 +734,61 @@ Contrôlé de bout en bout, rien à construire — la chaîne fonctionnait déj�
   la photo de remise du livreur.
 
 Le client la voit également sur sa commande et sur sa facture.
+
+## Gestion du catalogue (5 sept. 2026)
+
+**197 tests, 829 assertions.** `/admin/catalogue`.
+
+Le catalogue était en lecture seule : aucune route ne permettait de retirer un
+article introuvable sur le marché national, d'en corriger le prix, ni d'y poser
+une photo. Tout passait par la base.
+
+### Deux bugs trouvés avant d'écrire la première ligne
+
+**Un article « retiré de la vente » restait affiché en boutique.** Le filtre de
+disponibilité était facultatif (`?available=1`) et aucun écran ne le passait.
+Le client découvrait le problème au moment de commander, par une erreur. Le
+bouton « retirer » que cette fonctionnalité apporte n'aurait donc rien retiré.
+La vitrine dit maintenant la même chose que la caisse — liste **et** fiche
+produit.
+
+**Le `orWhere` de la recherche n'était pas groupé.** Il remontait au niveau de
+la requête entière et annulait tout ce qui précédait : chercher dans une
+catégorie renvoyait des articles des autres catégories dès que leur description
+contenait le mot.
+
+### Ce que fait l'écran
+
+Ajouter un article, corriger nom, catégorie, unité, prix, description. Retirer
+de la vente d'un clic — réversible, une rupture est rarement définitive.
+Filtres : sans photo, retirés, archivés.
+
+**Rien ne se supprime.** Un produit est référencé par des lignes de commande,
+donc par des factures déjà remises : le supprimer les rendrait illisibles. On
+l'archive, il quitte la boutique, l'historique reste entier. L'archivage retire
+aussi de la vente — les deux verrous bougent ensemble pour qu'un article archivé
+ne revienne pas par inadvertance.
+
+### Les photos, redimensionnées par le navigateur
+
+Ni GD ni Imagick ne sont installés, et c'est assumé : le navigateur réduit
+l'image **avant** l'envoi (`app/lib/resizeImage.js`). Une photo de téléphone
+pèse 4 Mo ; la téléverser telle quelle depuis une connexion béninoise prendrait
+une minute pour un fichier dont on n'utilise qu'un quart. L'écran affiche ce qui
+a été économisé. Le serveur vérifie ce qu'il reçoit, il ne le fabrique pas.
+
+Deux sources : l'appareil photo, ou la banque d'images — dont les fichiers sont
+**pointés, jamais copiés**, avec un avertissement quand une photo sert déjà
+ailleurs. Remplacer une photo téléversée efface l'ancien fichier ; les photos
+livrées avec l'application et celles de la banque ne sont jamais effacées, elles
+sont partagées.
+
+Le nom de fichier de la banque est contraint par expression régulière : sans
+cela, `../../.env` pointait où il voulait sur le disque. Testé.
+
+### Article de test
+
+`ZZZ — Article de test Axizán (ne pas commander)`, 1 XOF, dans Épicerie &
+conserves. **Une commande ne coûtera pas 1 XOF** : les frais de livraison
+s'ajoutent — 800 XOF à Cotonou Centre, 1 200 à Porto-Novo. Le plancher réel est
+801 XOF, en argent réel puisque les clés FedaPay sont des clés live.

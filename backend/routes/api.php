@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\FedapayController;
 use App\Http\Controllers\Api\SupplierSettlementController;
 use App\Http\Controllers\Api\AdminOrderController;
+use App\Http\Controllers\Api\AdminProductController;
 
 /*
 |--------------------------------------------------------------------------
@@ -150,6 +151,19 @@ Route::prefix('v1')->group(function () {
             Route::get('/payments/pending', [AdminController::class, 'pendingPayments']);
             Route::post('/orders/{id}/validate-payment', [AdminController::class, 'validatePayment']);
             Route::post('/staff', [AdminController::class, 'createStaff']);
+
+            // Catalogue : retirer un article introuvable, corriger un prix,
+            // poser une photo. Rien ne se supprime — les factures pointent dessus.
+            Route::get('/catalogue', [AdminProductController::class, 'index']);
+            Route::get('/catalogue/categories', [AdminProductController::class, 'categories']);
+            Route::get('/catalogue/banque', [AdminProductController::class, 'library']);
+            Route::post('/catalogue', [AdminProductController::class, 'store']);
+            Route::patch('/catalogue/{id}', [AdminProductController::class, 'update']);
+            Route::patch('/catalogue/{id}/availability', [AdminProductController::class, 'toggleAvailability']);
+            Route::patch('/catalogue/{id}/archive', [AdminProductController::class, 'archive']);
+            Route::post('/catalogue/{id}/photo', [AdminProductController::class, 'uploadPhoto']);
+            Route::post('/catalogue/{id}/photo-banque', [AdminProductController::class, 'assignFromLibrary']);
+            Route::delete('/catalogue/{id}/photo', [AdminProductController::class, 'removePhoto']);
 
             // Salle de contrôle : ce qui tourne, et surtout ce qui ne bouge pas.
             Route::get('/orders', [AdminOrderController::class, 'index']);
