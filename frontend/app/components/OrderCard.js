@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ORDER_STEPS } from '@/app/components/OrderStatusTimeline';
 import { formatPrice } from '@/app/lib/units';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, CreditCard } from 'lucide-react';
 
 const TERMINAL = {
   cancelled: { emoji: '❌', label: 'Annulée' },
@@ -54,9 +54,14 @@ export default function OrderCard({ order }) {
           </span>
         </div>
 
+        {/*
+          Un appel à l'action, pas un constat. Le client doit comprendre que
+          rien ne bougera tant qu'il n'aura pas payé : « en attente de
+          validation » le laissait attendre quelqu'un d'autre.
+        */}
         {order.payment_status === 'pending' && !terminal && (
-          <p className="mt-3 rounded-xl bg-gold-200/50 px-3 py-2 text-sm font-semibold text-forest-900">
-            En attente de validation du paiement
+          <p className="mt-3 flex items-center gap-2 rounded-xl bg-gold-500 px-3 py-2 text-sm font-bold text-forest-950">
+            <CreditCard size={15} /> À payer — vos courses n’ont pas encore démarré
           </p>
         )}
       </div>

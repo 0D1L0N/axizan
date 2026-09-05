@@ -7,7 +7,16 @@ import { Check } from 'lucide-react';
  * d'horodatage correspondante en base, ce qui permet d'afficher l'heure reelle.
  */
 export const ORDER_STEPS = [
-  { key: 'pending', emoji: '🧾', label: 'Commande reçue', at: 'created_at', hint: 'En attente de validation du paiement' },
+  /*
+   * « À payer », et non « en attente de validation ».
+   *
+   * L'ancienne formule datait du régime déclaratif, où un administrateur
+   * vérifiait le virement. Depuis FedaPay, personne ne valide rien : c'est le
+   * client qui doit payer. Lui dire d'attendre le laissait immobile devant une
+   * validation qui n'arriverait jamais — et sa commande occupait un créneau
+   * que personne d'autre ne pouvait prendre.
+   */
+  { key: 'pending', emoji: '🧾', label: 'À payer', at: 'created_at', hint: 'Vos courses partent dès que le paiement est confirmé' },
   { key: 'accepted', emoji: '👍', label: 'Acceptée', at: 'accepted_at', hint: 'Un préparateur a pris votre commande' },
   // Le préparateur ne paie pas au marché : il retire chez des fournisseurs
   // partenaires. Dire « achat » serait faux.

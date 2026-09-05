@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Market extends Model
 {
-    protected $fillable = ['name', 'city', 'depot_id', 'is_active'];
+    protected $fillable = ['name', 'city', 'address', 'landmark', 'opening_hours', 'notes', 'maps_query', 'depot_id', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];
 

@@ -38,75 +38,121 @@ class DatabaseSeeder extends Seeder
      */
     private function seedMarketsAndSuppliers(): void
     {
+        /*
+         * Les marches REELS, apres la fermeture de Dantokpa le 2 mai 2026.
+         *
+         * Les vivriers du Grand Nokoue sont partis a Akassato, dans le pole
+         * agroalimentaire rebaptise « Tokpa Daho ». C'est desormais la base
+         * d'approvisionnement principale : 168 hectares, six magasins secs,
+         * deux unites de froid.
+         *
+         * Les etals ci-dessous sont des EMPLACEMENTS A RENSEIGNER : ces poles
+         * ont ouvert il y a quelques mois et aucune source publique ne donne
+         * les noms ni les numeros de halle. Ils se relevent sur place, lors du
+         * premier passage d'un preparateur.
+         *
+         * `covers` liste les categories reellement servies par l'etal : c'est
+         * ce qui route le preparateur. L'ORDRE des etals fait l'ordre de
+         * parcours du marche — il le traverse une fois, sans revenir sur ses pas.
+         */
         $markets = [
             [
-                'name' => 'Dantokpa',
-                'city' => 'Cotonou',
-                /*
-                 * Dantokpa approvisionne tout le sud de la couverture. C'est le
-                 * marche de gros du Grand Nokoue : les communes voisines s'y
-                 * fournissent deja, il n'y a aucune raison d'ouvrir un marche
-                 * de retrait a Abomey-Calavi ou So-Ava.
-                 */
-                'zones' => ['Cotonou', 'Abomey-Calavi', 'Sô-Ava'],
-                /*
-                 * `covers` liste les categories reellement servies par l'etal :
-                 * c'est ce qui route le preparateur. Une vendeuse de legumes
-                 * propose presque toujours les condiments qui vont avec, d'ou
-                 * plusieurs categories par etal.
-                 *
-                 * L'ORDRE des etals fait l'ordre de parcours du marche : le
-                 * preparateur le traverse une fois, sans revenir sur ses pas.
-                 */
+                'name' => 'Tokpa Dahô — Pôle agroalimentaire',
+                'city' => 'Abomey-Calavi',
+                'address' => 'Akassato, à 1,5 km de la RNIE 2',
+                'landmark' => 'Site de 168 ha, six magasins secs et deux unités de froid',
+                'opening_hours' => '06:00 - 18:00',
+                'notes' => 'Marché de gros du Grand Nokoué, ouvert en mai 2026 pour accueillir '
+                    .'les vivriers de Dantokpa. Céréales, tubercules, oignons, haricot, maïs, '
+                    .'fruits et légumes, condiments. Les meilleurs prix de gros, mais il faut '
+                    .'compter le trajet depuis Cotonou.',
+                'maps_query' => 'Pôle agroalimentaire Akassato Abomey-Calavi Bénin',
+                // Le pole dessert les deux communes : c'est un marche de gros,
+                // pas un marche de quartier.
+                'zones' => ['Cotonou', 'Abomey-Calavi'],
                 'suppliers' => [
-                    ['name' => 'Étal Aïssatou', 'stall' => 'Allée B12', 'speciality' => 'Légumes et condiments',
+                    ['name' => 'Grossiste légumes et condiments', 'stall' => 'Halle à renseigner',
+                        'speciality' => 'Légumes et condiments',
                         'covers' => ['Légumes du jour', 'Condiments & épices']],
-                    ['name' => 'Chez Rachidi', 'stall' => 'Allée C04', 'speciality' => 'Tubercules',
+                    ['name' => 'Grossiste tubercules', 'stall' => 'Halle à renseigner',
+                        'speciality' => 'Tubercules',
                         'covers' => ['Tubercules & plantain']],
-                    ['name' => 'Grains du Nord', 'stall' => 'Allée A21', 'speciality' => 'Céréales et légumineuses',
+                    ['name' => 'Grossiste céréales et légumineuses', 'stall' => 'Magasin sec à renseigner',
+                        'speciality' => 'Céréales et légumineuses',
                         'covers' => ['Céréales & légumineuses']],
-                    ['name' => 'Poissonnerie Codjo', 'stall' => 'Halle poissons', 'speciality' => 'Poissons et fruits de mer',
+                    ['name' => 'Grossiste poissons', 'stall' => 'Unité de froid à renseigner',
+                        'speciality' => 'Poissons et fruits de mer',
                         'covers' => ['Poissons & fruits de mer']],
-                    ['name' => 'Boucherie Zinsou', 'stall' => 'Halle viandes', 'speciality' => 'Viandes et œufs',
+                    ['name' => 'Grossiste viandes et œufs', 'stall' => 'Halle à renseigner',
+                        'speciality' => 'Viandes et œufs',
                         'covers' => ['Viandes & œufs']],
-                    ['name' => 'Huilerie Sèdjro', 'stall' => 'Allée D07', 'speciality' => 'Huiles et pâtes',
+                    ['name' => 'Grossiste huiles et pâtes', 'stall' => 'Magasin sec à renseigner',
+                        'speciality' => 'Huiles et pâtes',
                         'covers' => ['Huiles & pâtes']],
-                    ['name' => 'Fruits Dossou', 'stall' => 'Allée E02', 'speciality' => 'Fruits de saison',
+                    ['name' => 'Grossiste fruits', 'stall' => 'Halle à renseigner',
+                        'speciality' => 'Fruits de saison',
                         'covers' => ['Fruits']],
-                    ['name' => 'Boutique Mensah', 'stall' => 'Entrée nord', 'speciality' => 'Épicerie et boissons',
+                    ['name' => 'Grossiste épicerie et boissons', 'stall' => 'Magasin sec à renseigner',
+                        'speciality' => 'Épicerie et boissons',
                         'covers' => ['Épicerie & conserves', 'Boissons locales']],
                 ],
             ],
             [
-                // Ouidah dessert l'ouest de l'Atlantique : y envoyer un
-                // preparateur depuis Cotonou lui ferait faire 40 km avant de
-                // commencer sa tournee.
-                'name' => 'Marché de Ouidah',
-                'city' => 'Ouidah',
-                'zones' => ['Ouidah', 'Kpomassè', 'Tori-Bossito'],
+                'name' => 'Marché Ganhi',
+                'city' => 'Cotonou',
+                'address' => 'Quartier Ganhi, centre de Cotonou',
+                'landmark' => 'Marché surélevé, près du boulevard Saint-Michel',
+                'opening_hours' => '07:00 - 19:00',
+                'notes' => 'Ouvert en décembre 2024. Détail au cœur de Cotonou : fruits et '
+                    .'légumes du jour. Pour un complément rapide ou une commande urgente, '
+                    .'quand faire Akassato n’a pas de sens.',
+                'maps_query' => 'Marché Ganhi Cotonou Bénin',
+                'zones' => ['Cotonou'],
                 'suppliers' => [
-                    ['name' => 'Étal Bernadette', 'stall' => 'Rangée 3', 'speciality' => 'Légumes et tubercules',
-                        'covers' => ['Légumes du jour', 'Tubercules & plantain']],
-                    ['name' => 'Poissonnerie Hounsa', 'stall' => 'Halle poissons', 'speciality' => 'Poissons et fruits de mer',
-                        'covers' => ['Poissons & fruits de mer']],
-                    ['name' => 'Fruits Adjovi', 'stall' => 'Rangée 1', 'speciality' => 'Fruits de saison',
+                    ['name' => 'Étal légumes Ganhi', 'stall' => 'Allée à renseigner',
+                        'speciality' => 'Légumes et condiments',
+                        'covers' => ['Légumes du jour', 'Condiments & épices']],
+                    ['name' => 'Étal fruits Ganhi', 'stall' => 'Allée à renseigner',
+                        'speciality' => 'Fruits de saison',
                         'covers' => ['Fruits']],
-                    ['name' => 'Épices Kpogli', 'stall' => 'Rangée 7', 'speciality' => 'Condiments et épices',
-                        'covers' => ['Condiments & épices']],
                 ],
             ],
             [
-                // Allada, chef-lieu de l'Atlantique, pour le nord du departement.
-                'name' => 'Marché d’Allada',
-                'city' => 'Allada',
-                'zones' => ['Allada', 'Toffo', 'Zè'],
+                'name' => 'Marché Midombo',
+                'city' => 'Cotonou',
+                'address' => 'Akpakpa est',
+                'landmark' => 'Zone est d’Akpakpa',
+                'opening_hours' => '07:00 - 19:00',
+                'notes' => 'Ouvert en novembre 2024. Dessert l’est de Cotonou : pratique pour '
+                    .'les livraisons d’Akpakpa et de la zone portuaire, sans traverser la ville.',
+                'maps_query' => 'Marché Midombo Akpakpa Cotonou Bénin',
+                'zones' => ['Cotonou'],
                 'suppliers' => [
-                    ['name' => 'Étal Gbèdji', 'stall' => 'Allée 2', 'speciality' => 'Légumes et condiments',
+                    ['name' => 'Étal légumes Midombo', 'stall' => 'Allée à renseigner',
+                        'speciality' => 'Légumes et condiments',
                         'covers' => ['Légumes du jour', 'Condiments & épices']],
-                    ['name' => 'Tubercules Sagbo', 'stall' => 'Allée 5', 'speciality' => 'Tubercules',
+                    ['name' => 'Poissonnerie Midombo', 'stall' => 'Halle à renseigner',
+                        'speciality' => 'Poissons et fruits de mer',
+                        'covers' => ['Poissons & fruits de mer']],
+                ],
+            ],
+            [
+                'name' => 'Marché de Cococodji',
+                'city' => 'Abomey-Calavi',
+                'address' => 'Cococodji',
+                'landmark' => 'Marché moderne, inauguré en janvier 2026',
+                'opening_hours' => '07:00 - 19:00',
+                'notes' => 'Détail moderne. Dessert Godomey et l’entrée sud d’Abomey-Calavi, '
+                    .'le secteur le plus dense de la commune.',
+                'maps_query' => 'Marché moderne Cococodji Abomey-Calavi Bénin',
+                'zones' => ['Abomey-Calavi'],
+                'suppliers' => [
+                    ['name' => 'Étal légumes Cococodji', 'stall' => 'Allée à renseigner',
+                        'speciality' => 'Légumes et condiments',
+                        'covers' => ['Légumes du jour', 'Condiments & épices']],
+                    ['name' => 'Étal tubercules Cococodji', 'stall' => 'Allée à renseigner',
+                        'speciality' => 'Tubercules',
                         'covers' => ['Tubercules & plantain']],
-                    ['name' => 'Greniers d’Allada', 'stall' => 'Allée 8', 'speciality' => 'Céréales et légumineuses',
-                        'covers' => ['Céréales & légumineuses']],
                 ],
             ],
         ];
@@ -120,17 +166,11 @@ class DatabaseSeeder extends Seeder
                 'landmark' => 'Face à la station Oryx',
                 'phone' => '+22961000010',
             ],
-            'Ouidah' => [
-                'name' => 'Dépôt Ouidah',
-                'address' => 'Route de Pahou, quartier Tovè',
-                'landmark' => 'Face au carrefour du marché',
+            'Abomey-Calavi' => [
+                'name' => 'Dépôt Abomey-Calavi',
+                'address' => 'Godomey, entrée sud de la commune',
+                'landmark' => 'Adresse exacte à relever sur place',
                 'phone' => '+22961000011',
-            ],
-            'Allada' => [
-                'name' => 'Dépôt Allada',
-                'address' => 'Carrefour Allada centre',
-                'landmark' => 'À côté de la gare routière',
-                'phone' => '+22961000012',
             ],
         ];
 

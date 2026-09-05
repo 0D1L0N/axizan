@@ -901,3 +901,63 @@ Accueil (« Littoral & Atlantique · 9 communes » — une liste de neuf noms ne
 tiendrait pas sur la ligne, le détail est en pied de page), pied de page,
 métadonnées, manifeste PWA, et le commentaire du contrôleur préparateur qui
 citait encore Porto-Novo en exemple.
+
+## Périmètre de lancement, et la fermeture de Dantokpa (5 sept. 2026)
+
+**215 tests.** Trois changements liés.
+
+### Dantokpa n'existe plus
+
+**Fait vérifié : le marché a été définitivement fermé le 2 mai 2026**, ses
+~20 000 commerçants relocalisés par catégorie entre le 13 avril et le 2 mai, et
+le site rasé. L'application envoyait ses préparateurs approvisionner un marché
+détruit depuis quatre mois.
+
+Les vivriers sont partis au **pôle agroalimentaire du Grand Nokoué, rebaptisé
+« Tokpa Dahô »** : 168 ha à Akassato (Abomey-Calavi), à 1,5 km de la RNIE 2,
+six magasins secs et deux unités de froid. Céréales, tubercules, oignons,
+haricot, maïs, fruits, légumes, condiments. C'est désormais la base
+d'approvisionnement d'Axizán.
+
+Marchés en service, seedés : **Tokpa Dahô** (Akassato), **Ganhi** (Cotonou,
+déc. 2024), **Midombo** (Akpakpa est, nov. 2024), **Cococodji**
+(Abomey-Calavi, janv. 2026).
+
+Dantokpa est **désactivé, jamais supprimé** : des préparateurs y sont
+rattachés, des fournisseurs y sont enregistrés, et des achats déjà réglés
+pointent sur ses étals.
+
+Sources : Jeune Afrique, La Nation Bénin, Matin Libre, Global Voices, gouv.bj.
+
+### Les marchés sont documentés pour le préparateur
+
+Nouvelles colonnes sur `markets` : `address`, `landmark`, `opening_hours`,
+`notes`, `maps_query`. L'écran préparateur affiche une fiche du marché avec un
+bouton « Y aller » qui ouvre une **recherche** Maps plutôt qu'un point figé —
+ces pôles sont neufs et leurs coordonnées ne sont pas encore stables.
+
+Un préparateur ne connaît pas forcément le marché où on l'envoie. Sans adresse
+ni horaires, il perd sa matinée.
+
+**À relever sur place** : les étals sont seedés comme « à renseigner ». Aucune
+source publique ne donne les noms ni les numéros de halle de ces pôles.
+
+### Périmètre réduit à Cotonou et Abomey-Calavi
+
+Les sept autres communes de l'Atlantique restent en base avec leurs créneaux,
+désactivées. Les rouvrir sera un interrupteur, pas une migration. Ouvrir neuf
+communes le premier jour aurait promis des livraisons à Zè sans préparateur sur
+place ni tarif négocié.
+
+### « En attente de validation » ne veut plus rien dire
+
+Le libellé datait du régime déclaratif, où un administrateur vérifiait le
+virement. Depuis FedaPay, **personne ne valide rien** : c'est le client qui doit
+payer. Lui dire d'attendre le laissait immobile devant une validation qui
+n'arriverait jamais — et sa commande occupait un créneau.
+
+Devenu **« À payer — vos courses n'ont pas encore démarré »**, en or, avec une
+icône de carte.
+
+*Vérifié au passage* : les trois commandes en attente portant une transaction
+FedaPay sont toutes `canceled` côté opérateur. Personne n'a été débité.

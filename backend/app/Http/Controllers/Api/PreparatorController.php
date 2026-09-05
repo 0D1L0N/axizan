@@ -67,7 +67,12 @@ class PreparatorController extends Controller
             'success' => true,
             'data' => $orders->items(),
             'meta' => [
-                'market' => $user->market?->only(['id', 'name', 'city']),
+                // Documente : un preparateur ne connait pas forcement le marche
+                // ou on l'envoie. Sans adresse ni horaires, il perd sa matinee —
+                // et les poles du Grand Nokoue ont tous ouvert en 2026.
+                'market' => $user->market?->only([
+                    'id', 'name', 'city', 'address', 'landmark', 'opening_hours', 'notes', 'maps_query',
+                ]),
                 'total' => $orders->total(),
             ],
         ]);

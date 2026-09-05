@@ -9,7 +9,7 @@ import PickListItem from '@/app/components/PickListItem';
 import StaffSteps, { PREP_STEPS } from '@/app/components/StaffSteps';
 import { usePickQueue } from '@/app/lib/pickQueue';
 import { formatQuantity } from '@/app/lib/units';
-import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, Loader2, MapPin, PackageCheck, Phone, RefreshCw, Store, WifiOff } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, Loader2, MapPin, Navigation, PackageCheck, Phone, RefreshCw, Store, WifiOff } from "lucide-react";
 
 /**
  * Reproduit localement ce que le serveur ferait de ce pointage.
@@ -492,6 +492,7 @@ function PreparatorPage() {
               {market?.city && (
                 <p className="mt-1 flex items-center gap-1.5 font-semibold text-ink-500">
                   <Store size={16} /> {market.city}
+                  {market.opening_hours && <> · {market.opening_hours}</>}
                 </p>
               )}
             </div>
@@ -503,6 +504,46 @@ function PreparatorPage() {
               <RefreshCw size={20} />
             </button>
           </div>
+
+          {/*
+            La fiche du marché.
+
+            Un préparateur ne connaît pas forcément le marché où on l'envoie —
+            les pôles du Grand Nokoué ont tous ouvert en 2026, après la
+            fermeture de Dantokpa. Sans adresse ni repère, il perd sa matinée.
+          */}
+          {market?.address && (
+            <section className="mt-5 rounded-panel border-2 border-forest-800/15 bg-white p-5">
+              <div className="flex items-start gap-2.5">
+                <MapPin size={19} className="mt-0.5 shrink-0 text-forest-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold leading-6 text-ink-900">{market.address}</p>
+                  {market.landmark && (
+                    <p className="mt-0.5 text-sm leading-6 text-ink-500">{market.landmark}</p>
+                  )}
+                </div>
+              </div>
+
+              {market.notes && (
+                <p className="mt-3 rounded-card bg-cream-100 p-3.5 text-sm leading-6 text-ink-700">
+                  {market.notes}
+                </p>
+              )}
+
+              {market.maps_query && (
+                // Une recherche plutôt qu'un point figé : ces pôles sont neufs
+                // et leurs coordonnées ne sont pas encore stables dans les cartes.
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(market.maps_query)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex h-12 items-center gap-2 rounded-full bg-forest-800 px-5 font-bold text-cream"
+                >
+                  <Navigation size={17} /> Y aller
+                </a>
+              )}
+            </section>
+          )}
 
           {/* En cours d'abord : c'est ce qu'il doit finir */}
           {mine.length > 0 && (
