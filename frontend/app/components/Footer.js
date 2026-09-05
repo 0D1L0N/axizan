@@ -25,7 +25,25 @@ const NAV = [
   },
 ];
 
-const ZONES = ['Cotonou', 'Abomey-Calavi', 'Porto-Novo'];
+/**
+ * Les neuf communes couvertes : le Littoral et l'Atlantique en entier.
+ *
+ * Cotonou d'abord — c'est là qu'est le dépôt et l'essentiel des commandes —
+ * puis l'Atlantique du plus proche au plus éloigné. L'ordre n'est pas
+ * alphabétique : il suit ce que le lecteur cherche, sa propre commune, et les
+ * plus peuplées viennent en tête.
+ */
+const ZONES = [
+  'Cotonou',
+  'Abomey-Calavi',
+  'Sô-Ava',
+  'Ouidah',
+  'Tori-Bossito',
+  'Kpomassè',
+  'Allada',
+  'Toffo',
+  'Zè',
+];
 
 export default function Footer() {
   return (

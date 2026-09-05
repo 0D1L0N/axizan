@@ -32,7 +32,7 @@ class PreparatorController extends Controller
      * Commandes payees disponibles, limitees aux zones desservies par le
      * marche du preparateur.
      *
-     * Sans ce filtre, un preparateur de Porto-Novo verrait des commandes de
+     * Sans ce filtre, un preparateur d'Allada verrait des commandes de
      * Cotonou qu'il ne peut pas honorer.
      */
     public function index(Request $request)

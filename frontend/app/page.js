@@ -97,8 +97,11 @@ export default function HomePage() {
           <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-24">
             <div className="max-w-2xl animate-rise-in">
               <div className="inline-flex items-center gap-2 rounded-full border border-cream/20 bg-cream/8 px-4 py-2 text-sm font-semibold backdrop-blur">
+                {/* Le département dit la couverture mieux qu'une liste de neuf
+                    communes qui ne tiendrait pas sur la ligne. Le détail est
+                    en pied de page, pour qui cherche la sienne. */}
                 <MapPin size={15} className="text-gold-500" />
-                Cotonou · Abomey-Calavi · Porto-Novo
+                Littoral &amp; Atlantique · 9 communes
               </div>
 
               <h1 className="mt-7 font-display text-display-lg font-semibold">

@@ -843,3 +843,61 @@ défaut en base — mais Laravel ne relit pas les valeurs par défaut après
 l'insertion, et le modèle en mémoire portait `null`. Le nouveau middleware
 rejetait donc des utilisateurs que la base considère comme actifs. Même piège
 que `is_available` à la création d'un produit.
+
+## Couverture : Littoral et Atlantique (5 sept. 2026)
+
+**215 tests, 893 assertions.**
+
+La couverture épouse désormais **deux départements entiers**, soit neuf
+communes :
+
+| Département | Communes |
+|---|---|
+| **Littoral** | Cotonou *(commune unique du département)* |
+| **Atlantique** | Abomey-Calavi, Allada, Kpomassè, Ouidah, Sô-Ava, Toffo, Tori-Bossito, Zè |
+
+**Porto-Novo sort de la couverture** : la commune appartient au département de
+l'Ouémé, pas à l'Atlantique.
+
+### Rien n'est effacé
+
+Des adresses, des commandes et des factures pointent sur la zone de Porto-Novo
+et sur le marché Ouando. Les supprimer troueraient l'historique. Ils sont
+**désactivés** : ils disparaissent des choix offerts aux nouveaux clients, et
+tout ce qui existe reste lisible — testé.
+
+Un détail qui aurait échappé : désactiver la zone ne suffisait pas. L'API des
+créneaux interroge `delivery_slots.is_active`, et les créneaux de Porto-Novo
+seraient restés réservables par appel direct. Les deux tombent ensemble.
+
+« Cotonou Centre » devient « Cotonou » : la zone couvre la commune entière, pas
+un centre-ville dont personne n'avait défini les limites. Renommée plutôt que
+recréée, pour préserver les adresses et créneaux déjà rattachés.
+
+### Trois marchés pour neuf communes
+
+| Marché | Dessert |
+|---|---|
+| Dantokpa (Cotonou) | Cotonou, Abomey-Calavi, Sô-Ava |
+| Marché de Ouidah | Ouidah, Kpomassè, Tori-Bossito |
+| Marché d'Allada | Allada, Toffo, Zè |
+
+Dantokpa est le marché de gros du Grand Nokoué — les communes voisines s'y
+fournissent déjà. Ouidah et Allada existent parce qu'envoyer un préparateur
+depuis Cotonou lui ferait faire 40 km avant de commencer sa tournée.
+
+Un dépôt par marché, et le routage préparateur suit automatiquement : il ne voit
+que les commandes des zones desservies par son marché.
+
+### Frais de livraison — à réviser
+
+Échelonnés sur l'éloignement du dépôt, de 800 XOF (Cotonou) à 2 500 XOF
+(Toffo, Zè). **Ce sont des ordres de grandeur, pas des tarifs négociés.** À
+revoir avant l'ouverture réelle de chaque commune.
+
+### Mis à jour partout
+
+Accueil (« Littoral & Atlantique · 9 communes » — une liste de neuf noms ne
+tiendrait pas sur la ligne, le détail est en pied de page), pied de page,
+métadonnées, manifeste PWA, et le commentaire du contrôleur préparateur qui
+citait encore Porto-Novo en exemple.

@@ -42,7 +42,13 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Dantokpa',
                 'city' => 'Cotonou',
-                'zones' => ['Cotonou Centre'],
+                /*
+                 * Dantokpa approvisionne tout le sud de la couverture. C'est le
+                 * marche de gros du Grand Nokoue : les communes voisines s'y
+                 * fournissent deja, il n'y a aucune raison d'ouvrir un marche
+                 * de retrait a Abomey-Calavi ou So-Ava.
+                 */
+                'zones' => ['Cotonou', 'Abomey-Calavi', 'Sô-Ava'],
                 /*
                  * `covers` liste les categories reellement servies par l'etal :
                  * c'est ce qui route le preparateur. Une vendeuse de legumes
@@ -72,16 +78,35 @@ class DatabaseSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Marché Ouando',
-                'city' => 'Porto-Novo',
-                'zones' => ['Porto-Novo'],
+                // Ouidah dessert l'ouest de l'Atlantique : y envoyer un
+                // preparateur depuis Cotonou lui ferait faire 40 km avant de
+                // commencer sa tournee.
+                'name' => 'Marché de Ouidah',
+                'city' => 'Ouidah',
+                'zones' => ['Ouidah', 'Kpomassè', 'Tori-Bossito'],
                 'suppliers' => [
                     ['name' => 'Étal Bernadette', 'stall' => 'Rangée 3', 'speciality' => 'Légumes et tubercules',
                         'covers' => ['Légumes du jour', 'Tubercules & plantain']],
+                    ['name' => 'Poissonnerie Hounsa', 'stall' => 'Halle poissons', 'speciality' => 'Poissons et fruits de mer',
+                        'covers' => ['Poissons & fruits de mer']],
                     ['name' => 'Fruits Adjovi', 'stall' => 'Rangée 1', 'speciality' => 'Fruits de saison',
                         'covers' => ['Fruits']],
                     ['name' => 'Épices Kpogli', 'stall' => 'Rangée 7', 'speciality' => 'Condiments et épices',
                         'covers' => ['Condiments & épices']],
+                ],
+            ],
+            [
+                // Allada, chef-lieu de l'Atlantique, pour le nord du departement.
+                'name' => 'Marché d’Allada',
+                'city' => 'Allada',
+                'zones' => ['Allada', 'Toffo', 'Zè'],
+                'suppliers' => [
+                    ['name' => 'Étal Gbèdji', 'stall' => 'Allée 2', 'speciality' => 'Légumes et condiments',
+                        'covers' => ['Légumes du jour', 'Condiments & épices']],
+                    ['name' => 'Tubercules Sagbo', 'stall' => 'Allée 5', 'speciality' => 'Tubercules',
+                        'covers' => ['Tubercules & plantain']],
+                    ['name' => 'Greniers d’Allada', 'stall' => 'Allée 8', 'speciality' => 'Céréales et légumineuses',
+                        'covers' => ['Céréales & légumineuses']],
                 ],
             ],
         ];
@@ -95,11 +120,17 @@ class DatabaseSeeder extends Seeder
                 'landmark' => 'Face à la station Oryx',
                 'phone' => '+22961000010',
             ],
-            'Porto-Novo' => [
-                'name' => 'Dépôt Porto-Novo',
-                'address' => 'Avenue Liberté, Djègan-Daho',
-                'landmark' => 'À côté du marché Ouando',
+            'Ouidah' => [
+                'name' => 'Dépôt Ouidah',
+                'address' => 'Route de Pahou, quartier Tovè',
+                'landmark' => 'Face au carrefour du marché',
                 'phone' => '+22961000011',
+            ],
+            'Allada' => [
+                'name' => 'Dépôt Allada',
+                'address' => 'Carrefour Allada centre',
+                'landmark' => 'À côté de la gare routière',
+                'phone' => '+22961000012',
             ],
         ];
 
@@ -180,13 +211,37 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Zones et créneaux de livraison pour Cotonou / Porto-Novo
+     * Zones et créneaux de livraison — Littoral et Atlantique.
+     *
+     * La couverture épouse deux départements entiers :
+     *
+     *   Littoral   : Cotonou (commune unique du département)
+     *   Atlantique : Abomey-Calavi, Allada, Kpomassè, Ouidah, Sô-Ava, Toffo,
+     *                Tori-Bossito, Zè
+     *
+     * Une zone par commune, parce que c'est le découpage que les clients
+     * connaissent et savent nommer — et parce que les frais suivent la
+     * distance au dépôt, pas une moyenne départementale.
+     *
+     * ATTENTION : les montants ci-dessous sont des ordres de grandeur calés
+     * sur l'éloignement, pas des tarifs négociés. Ils doivent être révisés
+     * depuis l'administration avant l'ouverture réelle de chaque commune.
      */
     private function seedLogistics(): void
     {
         $zones = [
-            ['name' => 'Cotonou Centre', 'base_delivery_fee' => 800],
-            ['name' => 'Porto-Novo', 'base_delivery_fee' => 1200],
+            // Littoral — le dépôt y est.
+            ['name' => 'Cotonou', 'base_delivery_fee' => 800],
+
+            // Atlantique, du plus proche au plus éloigné de Cotonou.
+            ['name' => 'Abomey-Calavi', 'base_delivery_fee' => 1000],
+            ['name' => 'Sô-Ava', 'base_delivery_fee' => 1500],
+            ['name' => 'Ouidah', 'base_delivery_fee' => 1800],
+            ['name' => 'Tori-Bossito', 'base_delivery_fee' => 1800],
+            ['name' => 'Kpomassè', 'base_delivery_fee' => 2000],
+            ['name' => 'Allada', 'base_delivery_fee' => 2000],
+            ['name' => 'Toffo', 'base_delivery_fee' => 2500],
+            ['name' => 'Zè', 'base_delivery_fee' => 2500],
         ];
 
         foreach ($zones as $zoneData) {

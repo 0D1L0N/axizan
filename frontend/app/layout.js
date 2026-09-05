@@ -29,7 +29,7 @@ export const metadata = {
     // « frais » promettait une cueillette du jour que le marché ne garantit
     // pas toujours. Ce qu'on tient vraiment, c'est le choix chez des
     // partenaires connus, le retrait du jour et la livraison à l'heure dite.
-    'Nos acheteurs choisissent vos produits chez nos fournisseurs partenaires à Cotonou, Abomey-Calavi et Porto-Novo, et vous êtes livré dès 1 heure, au créneau de votre choix.',
+    'Nos acheteurs choisissent vos produits chez nos fournisseurs partenaires dans le Littoral et l’Atlantique — Cotonou, Abomey-Calavi, Ouidah, Allada et les autres communes — et vous êtes livré dès 1 heure, au créneau de votre choix.',
   manifest: '/manifest.json',
   icons: {
     icon: [
