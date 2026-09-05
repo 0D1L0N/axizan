@@ -217,7 +217,7 @@ class DatabaseSeeder extends Seeder
     {
         $accounts = [
             ['email' => 'client@test.com', 'name' => 'Client Démo', 'phone' => '+22961000001', 'role' => 'client'],
-            ['email' => 'preparateur@test.com', 'name' => 'Préparateur Démo', 'phone' => '+22961000002', 'role' => 'preparateur', 'market' => 'Dantokpa'],
+            ['email' => 'preparateur@test.com', 'name' => 'Préparateur Démo', 'phone' => '+22961000002', 'role' => 'preparateur', 'market' => 'Tokpa Dahô — Pôle agroalimentaire'],
             ['email' => 'livreur@test.com', 'name' => 'Livreur Démo', 'phone' => '+22961000003', 'role' => 'livreur'],
             ['email' => 'admin@test.com', 'name' => 'Admin Démo', 'phone' => '+22961000004', 'role' => 'admin'],
         ];
@@ -241,11 +241,27 @@ class DatabaseSeeder extends Seeder
                 ]
             );
 
-            // firstOrCreate n'applique rien aux comptes déjà existants : un
-            // rattachement ajouté après coup ne serait jamais posé, et le
-            // préparateur resterait sans marché sans qu'on comprenne pourquoi.
-            if (isset($account['market']) && ! $user->market_id) {
-                $user->update(['market_id' => Market::where('name', $account['market'])->value('id')]);
+            /*
+             * Rattachement rejoue a chaque passage, pour deux raisons.
+             *
+             * `firstOrCreate` n'applique rien aux comptes deja existants : un
+             * rattachement ajoute apres coup ne serait jamais pose.
+             *
+             * Et un preparateur rattache a un marche DESACTIVE est aussi
+             * inutilisable qu'un preparateur sans marche : il ouvre son ecran
+             * et ne voit aucune commande. C'est arrive avec la fermeture de
+             * Dantokpa — le compte pointait sur un marche rase.
+             */
+            if (isset($account['market'])) {
+                $current = $user->market;
+
+                if (! $current || ! $current->is_active) {
+                    $user->update([
+                        'market_id' => Market::where('name', $account['market'])
+                            ->where('is_active', true)
+                            ->value('id'),
+                    ]);
+                }
             }
         }
     }
