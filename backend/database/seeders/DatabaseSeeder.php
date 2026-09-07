@@ -67,9 +67,16 @@ class DatabaseSeeder extends Seeder
                     .'fruits et légumes, condiments. Les meilleurs prix de gros, mais il faut '
                     .'compter le trajet depuis Cotonou.',
                 'maps_query' => 'Pôle agroalimentaire Akassato Abomey-Calavi Bénin',
-                // Le pole dessert les deux communes : c'est un marche de gros,
-                // pas un marche de quartier.
-                'zones' => ['Cotonou', 'Abomey-Calavi'],
+                /*
+                 * Le pole dessert les deux communes : c'est un marche de gros,
+                 * pas un marche de quartier.
+                 *
+                 * La zone d'essai y figure aussi. Le rattachement se fait par
+                 * `sync()`, qui efface ce qu'il ne liste pas : l'omettre ici
+                 * detacherait la voie d'essai a chaque passage du seeder, et
+                 * la commande de test n'apparaitrait chez aucun preparateur.
+                 */
+                'zones' => ['Cotonou', 'Abomey-Calavi', 'ZZZ — Zone de test (usage interne)'],
                 'suppliers' => [
                     ['name' => 'Grossiste légumes et condiments', 'stall' => 'Halle à renseigner',
                         'speciality' => 'Légumes et condiments',
@@ -285,25 +292,44 @@ class DatabaseSeeder extends Seeder
      */
     private function seedLogistics(): void
     {
+        /*
+         * `open` porte le perimetre de lancement, et il est EXPLICITE.
+         *
+         * Le seeder ecrivait `is_active => true` pour toutes les zones :
+         * chaque passage rouvrait les sept communes que la migration venait de
+         * differer. La couverture annoncee au client dependait donc du dernier
+         * des deux qui avait tourne — une commande pouvait partir vers Ze sans
+         * preparateur sur place.
+         *
+         * La couverture cible reste le Littoral et l'Atlantique ; les communes
+         * fermees restent en base avec leurs creneaux, pretes a rouvrir.
+         */
         $zones = [
             // Littoral — le dépôt y est.
-            ['name' => 'Cotonou', 'base_delivery_fee' => 800],
+            ['name' => 'Cotonou', 'base_delivery_fee' => 800, 'open' => true],
 
             // Atlantique, du plus proche au plus éloigné de Cotonou.
-            ['name' => 'Abomey-Calavi', 'base_delivery_fee' => 1000],
-            ['name' => 'Sô-Ava', 'base_delivery_fee' => 1500],
-            ['name' => 'Ouidah', 'base_delivery_fee' => 1800],
-            ['name' => 'Tori-Bossito', 'base_delivery_fee' => 1800],
-            ['name' => 'Kpomassè', 'base_delivery_fee' => 2000],
-            ['name' => 'Allada', 'base_delivery_fee' => 2000],
-            ['name' => 'Toffo', 'base_delivery_fee' => 2500],
-            ['name' => 'Zè', 'base_delivery_fee' => 2500],
+            ['name' => 'Abomey-Calavi', 'base_delivery_fee' => 1000, 'open' => true],
+            ['name' => 'Sô-Ava', 'base_delivery_fee' => 1500, 'open' => false],
+            ['name' => 'Ouidah', 'base_delivery_fee' => 1800, 'open' => false],
+            ['name' => 'Tori-Bossito', 'base_delivery_fee' => 1800, 'open' => false],
+            ['name' => 'Kpomassè', 'base_delivery_fee' => 2000, 'open' => false],
+            ['name' => 'Allada', 'base_delivery_fee' => 2000, 'open' => false],
+            ['name' => 'Toffo', 'base_delivery_fee' => 2500, 'open' => false],
+            ['name' => 'Zè', 'base_delivery_fee' => 2500, 'open' => false],
+
+            // Voie d'essai : un total nul est acquitté d'office, ce qui permet
+            // d'éprouver le parcours complet sans faire circuler d'argent.
+            ['name' => 'ZZZ — Zone de test (usage interne)', 'base_delivery_fee' => 0, 'open' => true],
         ];
 
         foreach ($zones as $zoneData) {
+            $open = $zoneData['open'];
+            unset($zoneData['open']);
+
             $zone = DeliveryZone::updateOrCreate(
                 ['name' => $zoneData['name']],
-                $zoneData + ['is_active' => true]
+                $zoneData + ['is_active' => $open]
             );
 
             // Creneaux d'une heure couvrant les horaires des marches beninois
@@ -327,7 +353,11 @@ class DatabaseSeeder extends Seeder
             foreach ($slots as $slotData) {
                 DeliverySlot::updateOrCreate(
                     ['zone_id' => $zone->id, 'display_label' => $slotData['display_label']],
-                    $slotData + ['zone_id' => $zone->id, 'is_active' => true, 'max_orders_per_slot' => 20]
+                    // Le creneau suit sa zone. Une commune fermee dont les
+                    // creneaux resteraient actifs serait reservable par appel
+                    // direct : l'API des creneaux interroge cette colonne, pas
+                    // celle de la zone.
+                    $slotData + ['zone_id' => $zone->id, 'is_active' => $open, 'max_orders_per_slot' => 20]
                 );
             }
 

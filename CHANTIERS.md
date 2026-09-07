@@ -1013,3 +1013,52 @@ payer une marchandise jamais retirée.
 
 Sa liste distingue « retiré — indisponible » de **« le client a refusé —
 reposez-le »**. Dans le second cas il a le produit en main.
+
+## Voie d'essai : éprouver le parcours sans argent (7 sept. 2026)
+
+**228 tests, 971 assertions.**
+
+Les clés FedaPay sont des clés **live** : la moindre commande débite un vrai
+compte. Et un article à 1 franc n'existe pas — les frais de livraison portaient
+le total à 801 XOF.
+
+### Le couple qui rend le test gratuit
+
+- **`ZZZ — Article de test Axizán`** à 0 XOF
+- **`ZZZ — Zone de test (usage interne)`** à 0 XOF de livraison
+
+Total nul, donc **paiement acquitté d'office**. Une commande à zéro franc est
+payée d'avance : la laisser attendre bloquerait le client devant un écran lui
+demandant de régler zéro, pendant que sa commande occupe un créneau. Le
+garde-fou est testé — une commande payante attend toujours son paiement.
+
+La zone est rattachée à Tokpa Dahô, faute de quoi aucun préparateur ne verrait
+la commande de test.
+
+### Vérifié en vrai, pas seulement en test
+
+Parcours complet exécuté à travers le tunnel public : commande à 0 XOF →
+paiement acquitté → préparateur accepte, démarre, pointe → dépôt avec photo →
+livreur accepte, part, transmet sa position, remet avec photo → facture
+`FA-20260907-00003`, total 0, les deux photos présentes.
+
+### Deux contradictions corrigées
+
+**Le seeder rouvrait les communes que la migration fermait.** Il écrivait
+`is_active => true` pour toutes les zones : la couverture annoncée dépendait du
+dernier des deux qui avait tourné. Le périmètre est désormais explicite (`open`),
+et les créneaux suivent leur zone.
+
+**Le `sync()` des marchés détachait la voie d'essai** à chaque passage du
+seeder, rendant la commande de test invisible.
+
+### Une fausse piste, notée pour mémoire
+
+Les envois de photo semblaient échouer à travers le proxy Next : `curl`
+retournait 000 alors que le JSON passait. J'ai remplacé la réécriture par un
+passe-plat avant de trouver la vraie cause — **exit code 26, `CURLE_READ_ERROR`** :
+`curl` sous Windows ne sait pas lire un chemin `/tmp` de Git Bash. Il n'y avait
+aucun bug applicatif ; la réécriture a été restaurée.
+
+*À retenir* : ne pas conclure à un bug applicatif avant d'avoir lu le code de
+sortie de l'outil de test.

@@ -88,12 +88,30 @@ class OrderService
             // Le créneau n'a plus de compteur à incrémenter : sa capacité se
             // déduit des commandes de la date visée (DeliverySlot::bookedCountsOn).
 
-            // Créer le paiement en attente de validation manuelle (admin)
-            $this->paymentService->createManualPayment(
+            $payment = $this->paymentService->createManualPayment(
                 $order,
                 $data['payment_provider'] ?? null,
                 $data['payer_phone'] ?? null
             );
+
+            /*
+             * Une commande a zero franc est payee d'avance : il n'y a rien a
+             * encaisser.
+             *
+             * La laisser attendre une confirmation serait un blocage sans
+             * objet — le client fixerait un ecran lui demandant de regler zero
+             * franc, et sa commande occuperait un creneau sans jamais partir.
+             *
+             * Le cas se presente des qu'un article est offert et que la zone ne
+             * facture pas la livraison. Il sert aussi a eprouver le parcours
+             * complet sans faire circuler d'argent reel.
+             */
+            if (Money::round((float) $order->total) === 0) {
+                $this->paymentService->confirmPayment($payment, reference: 'Commande sans montant');
+                $order->refresh();
+
+                OrderEvent::record($order, 'payment.waived', reason: 'Total nul : rien à encaisser');
+            }
 
             // Créer la notification
             $this->notificationService->sendOrderCreatedNotification($order);
