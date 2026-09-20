@@ -16,6 +16,7 @@ import {
   Loader2,
   MapPin,
   Navigation,
+  PackageX,
   Phone,
   RefreshCw,
   Undo2,
@@ -185,9 +186,15 @@ function OrderDetail({ id, onBack, onChanged }) {
       if (action === 'release') await adminService.releaseOrder(id, reason.trim());
       if (action === 'cancel') await adminService.cancelOrder(id, reason.trim());
       if (action === 'reassign') await adminService.reassignOrder(id, Number(target), reason.trim() || null);
+      if (action === 'abandon') await adminService.abandonDelivery(id, reason.trim());
 
       toast.success(
-        { release: 'Commande libérée.', cancel: 'Commande annulée.', reassign: 'Commande confiée.' }[action]
+        {
+          release: 'Commande libérée.',
+          cancel: 'Commande annulée.',
+          reassign: 'Commande confiée.',
+          abandon: 'Course close. Le client est remboursé et prévenu.',
+        }[action]
       );
       setAction(null);
       await load();
@@ -334,6 +341,19 @@ function OrderDetail({ id, onBack, onChanged }) {
             >
               <Ban size={16} /> Annuler
             </button>
+            {/*
+              La seule issue quand une course ne revient pas. Proposée
+              uniquement dans ce cas : partout ailleurs, « Libérer » ou
+              « Annuler » font l'affaire sans rembourser personne.
+            */}
+            {order.livreur && !['completed', 'cancelled', 'returned'].includes(order.status) && (
+              <button
+                onClick={() => openAction('abandon')}
+                className="inline-flex items-center gap-2 rounded-full border border-clay-500 px-5 py-2.5 text-sm font-bold text-clay-600 transition hover:bg-clay-200/40"
+              >
+                <PackageX size={16} /> La course ne revient pas
+              </button>
+            )}
           </div>
         ) : (
           <div className="mt-4 space-y-3">

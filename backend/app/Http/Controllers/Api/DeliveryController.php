@@ -7,6 +7,7 @@ use App\Services\DeliveryService;
 use App\Models\Delivery;
 use App\Models\Order;
 use App\Enums\OrderStatus;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class DeliveryController extends Controller
@@ -99,12 +100,47 @@ class DeliveryController extends Controller
                 'success' => true,
                 'data' => $delivery->load('order', 'livreur'),
             ]);
+        } catch (QueryException $e) {
+            /*
+             * Deux livreurs sur le meme panier.
+             *
+             * Le depot affiche la liste a TOUS les livreurs actifs : le premier
+             * arrive prend, c'est le principe. L'unicite de `deliveries.order_id`
+             * en base empeche depuis toujours la seconde course — mais elle
+             * repondait « SQLSTATE[23505] : duplicate key value violates unique
+             * constraint », affiche tel quel sur le telephone du livreur.
+             *
+             * Le garde-fou etait bon ; seule la phrase manquait.
+             */
+            if ($this->isDuplicateDelivery($e)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'already_taken',
+                    'message' => 'Un autre livreur vient de prendre ce panier.',
+                ], 409);
+            }
+
+            throw $e;
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    /**
+     * Violation de l'unicite de `deliveries.order_id` ?
+     *
+     * 23505 est le code SQLSTATE normalise de la violation d'unicite : il vaut
+     * pour PostgreSQL comme pour SQLite, la ou le texte du message differe de
+     * l'un a l'autre.
+     */
+    private function isDuplicateDelivery(QueryException $e): bool
+    {
+        return $e->getCode() === '23505'
+            || str_contains($e->getMessage(), 'deliveries.order_id')
+            || str_contains($e->getMessage(), 'deliveries_order_id_unique');
     }
 
     /**

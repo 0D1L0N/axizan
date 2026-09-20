@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\SupplierSettlementController;
 use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\AdminProductController;
 use App\Http\Controllers\Api\AdminClientController;
+use App\Http\Controllers\Api\AdminStaffController;
 
 /*
 |--------------------------------------------------------------------------
@@ -165,6 +166,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/clients/{id}', [AdminClientController::class, 'show']);
             Route::patch('/clients/{id}/status', [AdminClientController::class, 'setStatus']);
 
+            // Le personnel : qui travaille, ce qu'il tient en main, et le
+            // moyen de couper l'accès de quelqu'un qui est parti.
+            Route::get('/personnel', [AdminStaffController::class, 'index']);
+            Route::get('/personnel/{id}', [AdminStaffController::class, 'show']);
+            Route::patch('/personnel/{id}/status', [AdminStaffController::class, 'setStatus']);
+
             // Catalogue : retirer un article introuvable, corriger un prix,
             // poser une photo. Rien ne se supprime — les factures pointent dessus.
             Route::get('/catalogue', [AdminProductController::class, 'index']);
@@ -185,6 +192,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/orders/{id}/release', [AdminOrderController::class, 'release']);
             Route::post('/orders/{id}/reassign', [AdminOrderController::class, 'reassign']);
             Route::post('/orders/{id}/cancel', [AdminOrderController::class, 'cancel']);
+            // L'issue quand une course ne revient pas : ni libérable, ni
+            // annulable par les voies ordinaires.
+            Route::post('/orders/{id}/abandon-delivery', [AdminOrderController::class, 'abandonDelivery']);
 
             // Le point fournisseur : ce qu'Axizán doit à chaque étal.
             Route::get('/suppliers', [SupplierSettlementController::class, 'index']);

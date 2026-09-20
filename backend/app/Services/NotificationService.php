@@ -140,24 +140,26 @@ class NotificationService
     }
 
     /**
-     * Notification livraison assignée
+     * Le livreur quitte le depot avec le panier.
+     *
+     * Au client seulement. L'ancienne version prevenait aussi le livreur de la
+     * course qu'il venait lui-meme d'accepter — un message pour lui apprendre
+     * ce qu'il avait fait trois secondes plus tot.
+     *
+     * Le numero est dans le texte : ce SMS arrive quand le client doit etre
+     * joignable et present. S'il a un empechement, il faut qu'il puisse appeler
+     * sans rouvrir l'application.
      */
-    public function sendDeliveryAssignedNotification(Order $order, User $livreur)
+    public function sendDeliveryStartedNotification(Order $order, User $livreur)
     {
+        $reach = $livreur->phone ? " ({$livreur->phone})" : '';
+
         $this->notify(
             $order->client,
             NotificationType::ORDER_OUT_FOR_DELIVERY,
-            "🚚 En cours de livraison",
-            "{$livreur->name} est en route pour vous livrer!",
+            '🚚 En route chez vous',
+            "{$livreur->name}{$reach} part du dépôt avec votre commande {$order->order_number}.",
             ['order_id' => $order->id, 'livreur_id' => $livreur->id]
-        );
-
-        $this->notify(
-            $livreur,
-            NotificationType::DELIVERY_ASSIGNED,
-            "📦 Nouvelle livraison",
-            "Commande #{$order->order_number} assignée pour {$order->client->name}",
-            ['order_id' => $order->id]
         );
     }
 

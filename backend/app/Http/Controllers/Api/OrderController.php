@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\SlotUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Services\OrderService;
 use App\Models\Order;
@@ -111,6 +112,17 @@ class OrderController extends Controller
                 'data' => $order->load('items', 'client', 'deliveryAddress'),
                 'message' => 'Commande créée avec succès',
             ], 201);
+        } catch (SlotUnavailableException $e) {
+            // La place a ete prise entre le controle d'entree et l'ecriture.
+            // Meme code d'erreur que le refus en amont : de l'exterieur c'est
+            // le meme evenement, et le client doit faire la meme chose —
+            // choisir un autre creneau. Rien n'a ete ecrit, la transaction a
+            // ete annulee.
+            return response()->json([
+                'success' => false,
+                'error' => 'slot_unavailable',
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

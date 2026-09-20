@@ -1062,3 +1062,208 @@ aucun bug applicatif ; la réécriture a été restaurée.
 
 *À retenir* : ne pas conclure à un bug applicatif avant d'avoir lu le code de
 sortie de l'outil de test.
+
+## Le livreur invisible, et trois courses (20 sept. 2026)
+
+**238 tests, 1045 assertions.**
+
+Parti pour l'écran du personnel, j'ai d'abord lu le chemin du livreur. Il y
+manquait plus que des écrans.
+
+### `orders.livreur_id` n'était écrit par personne
+
+Le seul code qui le posait — `OrderService::assignDelivery()` — **n'était
+appelé de nulle part**. Le chemin réel (`DeliveryController::accept` →
+`DeliveryService::assignOrderToLivreur`) créait la ligne `deliveries` et
+s'arrêtait là.
+
+Conséquence visible en production : la salle de contrôle affichait un contact
+« Livreur » vide pour **toutes** les commandes, y compris celles en route. Le
+commentaire de l'écran promettait l'inverse — *« Le personnel est identifié ET
+joignable : l'intérêt de cet écran est de pouvoir appeler la personne
+concernée »*. Le jour où un client appelle pour dire que personne n'arrive,
+l'administrateur n'avait aucun numéro à composer.
+
+La méthode morte est retirée. Un commentaire prend sa place, pour que le
+prochain qui cherche `livreur_id` trouve le bon chemin du premier coup.
+
+### Le SMS le plus utile du parcours ne partait pas
+
+`config/notifications.php` déclare `ORDER_OUT_FOR_DELIVERY` en SMS depuis le
+début, avec sa justification écrite : *« Le livreur est en route : le client
+doit être là. C'est le SMS le plus utile de tout le parcours. »*
+
+Son unique émetteur était ce même code mort. Le client découvrait le livreur à
+sa porte, ou n'entendait pas sonner.
+
+Il part maintenant **au départ du dépôt**, pas à l'acceptation : quand le
+livreur prend le panier il est encore sur place, et le client n'a rien à faire
+de cette information-là. Le numéro du livreur est dans le texte — ce SMS arrive
+quand le client doit être joignable ; s'il a un empêchement, il doit pouvoir
+rappeler sans rouvrir l'application.
+
+Le second message, celui qui prévenait le livreur de la course qu'il venait
+lui-même d'accepter, est supprimé.
+
+### La capacité des créneaux était vendable deux fois
+
+Le contrôle de capacité vivait dans `OrderController`, **hors de la transaction
+de création** : lu à l'entrée, la commande écrite plus loin. Deux clients qui
+visent la dernière place à trois secondes d'écart passaient tous les deux.
+
+Ce n'est pas un raffinement de robustesse. Axizán ne détient aucun stock — les
+ignames ne manquent pas au marché. Ce qui est rare ici, ce sont les **heures** :
+la capacité d'un créneau est le seul stock réel de la plateforme. Une place
+vendue deux fois, c'est un préparateur qui découvre le matin une commande de
+trop, et un client à rappeler pour lui reprendre son créneau.
+
+Le contrôle entre dans la transaction, verrou posé **sur la ligne du créneau** —
+seul point de passage commun à tous ceux qui réservent ce créneau-là. Verrouiller
+les commandes existantes n'aurait rien protégé : ce qu'on empêche, ce sont les
+lignes qui n'existent pas encore.
+
+Le contrôle du contrôleur reste en place : il répond plus vite, porte les autres
+motifs de refus (créneau fermé, délai trop court, date hors horizon), et évite
+d'ouvrir une transaction pour rien. Le second est le dernier mot.
+
+### Deux préparateurs, une commande
+
+`acceptOrder()` lisait `canBeAccepted()` puis écrivait, sans rien entre les
+deux. Plusieurs préparateurs regardent pourtant la **même liste**. Le second
+écrasait le premier — qui était déjà parti acheter, et revenait au dépôt avec un
+panier qui ne lui appartenait plus.
+
+La commande est relue à l'intérieur de la transaction, verrou posé. Le second
+apprend qu'elle lui échappe, **et pourquoi** : « cette commande ne peut pas être
+acceptée » laissait croire à un défaut de la commande.
+
+La relecture porte sur une instance fraîche, pas sur celle reçue en argument —
+c'est justement l'écart entre les deux chargements qu'on ferme. Et la mise à
+jour passe par le modèle, pas par le constructeur de requêtes : un `UPDATE` de
+masse ne déclenche pas les événements Eloquent, et le journal des transitions,
+branché sur `updated`, perdrait l'entrée.
+
+### Deux livreurs, un panier
+
+`deliveries.order_id` porte un index `unique()` depuis la migration d'origine :
+le doublon était **déjà** arrêté. Mais il répondait `SQLSTATE[23505] : duplicate
+key value violates unique constraint`, affiché tel quel sur le téléphone du
+second livreur.
+
+Le garde-fou était bon ; seule la phrase manquait. C'est désormais un 409 et
+« Un autre livreur vient de prendre ce panier. » Le dépôt montre la liste à tous
+les livreurs actifs : la collision est le cas normal, pas l'incident.
+
+### Ce que les tests prouvent, et ce qu'ils ne prouvent pas
+
+La suite tourne sur SQLite, où `lockForUpdate` ne compile rien : **le verrouillage
+lui-même ne s'éprouve qu'en PostgreSQL**. Ce que les dix nouveaux tests
+établissent, c'est que le contrôle a été déplacé là où le verrou le protège — et
+les défauts eux-mêmes, qui sont réels.
+
+Vérifiés en remettant l'ancien code : **8 des 10 échouent avant correction**. Le
+plus net est celui du créneau — *« Failed asserting that 2 is identical to 1 »* :
+deux commandes sur un créneau d'une place. La survente était démontrable, pas
+supposée.
+
+Les deux qui passaient déjà gardent leur utilité : ils empêchent de réintroduire
+la notification inutile au livreur, et de verrouiller dehors le préparateur qui
+appuie deux fois sur un réseau instable.
+
+### Reste à faire
+
+L'écran du personnel — le chantier pour lequel j'ouvrais ce code. Il peut
+maintenant s'appuyer sur `orders.livreur_id`, qui dit enfin la vérité.
+
+## Le personnel, et la course qui ne revient pas (20 sept. 2026)
+
+**254 tests, 1156 assertions.** `/admin/personnel`.
+
+*« Un livreur qui part garde aujourd'hui son accès à vie. »* Le verrou existait
+pourtant depuis la gestion des clients — `users.status` coupe la connexion, la
+suspension détruit les jetons. Mais rien ne permettait de l'actionner sur
+quelqu'un du personnel. **La serrure était posée, sans poignée.**
+
+### Le filtre qui sert
+
+« Sans nouvelle » : comptes actifs sans un seul passage depuis quatorze jours.
+C'est le signal qui répond au problème d'origine — personne ne vient déclarer
+qu'il arrête, il cesse simplement de venir.
+
+Quatorze jours passent deux week-ends et un empêchement ordinaire ; en deçà, on
+signalerait des gens en congé. Les comptes créés récemment sont exclus : embauché
+avant-hier, sans passage, quelqu'un serait signalé comme parti — et le filtre
+serait ignoré au bout d'une semaine.
+
+### Deux règles de suspension, et elles ne sont pas symétriques
+
+Parce que ce que tient un préparateur et ce que tient un livreur ne sont pas la
+même chose.
+
+**Un préparateur : ses commandes repartent au marché.** Rien n'est physiquement
+engagé — il n'a pas encore déposé au dépôt. Les lignes déjà pointées sont remises
+à zéro, la marchandise étant chez lui ; le suivant repart d'une liste vierge.
+Suspendre sans libérer bloquerait ces commandes pour toujours : `preparateur_id`
+reste posé, personne d'autre ne peut les prendre, et le client attend une
+commande que plus personne ne traite.
+
+Libéré d'office plutôt qu'en exigeant le ménage à la main : une suspension est
+souvent une urgence, et c'est le pire moment pour imposer six clics préalables.
+
+**Un livreur en course : c'est refusé.** La marchandise est dans sa sacoche. Lui
+couper l'application n'amènerait pas le panier chez le client — ça supprimerait
+seulement le moyen de savoir où il est. Le refus **nomme la commande** : sans le
+numéro, il faudrait fouiller la salle de contrôle pour trouver laquelle bloque.
+
+Un panier déjà au dépôt ne retient pas son préparateur : son travail sur cette
+commande est fini, elle appartient au livreur.
+
+### L'impasse trouvée en vérifiant sur les vraies données
+
+L'écran branché, `Livreur Démo` affichait **trois paniers en main** — restes des
+essais du 7 septembre. Avec la règle ci-dessus, son compte devenait
+**insuspendable à vie**. J'ai suivi ma propre consigne — « traitez la livraison
+dans la salle de contrôle » — et la porte n'ouvrait pas :
+
+- `release` refuse `IN_DELIVERY` : le retrait est déjà fait.
+- `canBeCancelled()` exclut `IN_DELIVERY` : pour ne pas annuler sous les pieds
+  d'un livreur qui roule.
+- `DeliveryService::failDelivery()` existait — **exposée par aucune route**.
+  Encore du code mort, comme `assignDelivery()` ce matin.
+
+Ces deux refus sont justes quand la course se déroule. Ils enfermaient tout
+quand elle ne se déroule pas : livreur injoignable, moto volée, quelqu'un qui ne
+revient jamais. La commande restait `IN_DELIVERY` à vie, le client sans nouvelle
+ni remboursement.
+
+**« La course ne revient pas »** est l'issue, dans la salle de contrôle. Elle
+marque la livraison échouée, annule la commande, rembourse le client et le
+prévient. Le motif est obligatoire.
+
+On ne remet pas la commande « prête » : le panier n'est plus au dépôt, et
+annoncer le contraire enverrait un autre livreur chercher une marchandise qui
+n'existe plus sur place. **La perte est pour Axizán, et elle est écrite.**
+
+Le bouton n'apparaît que si un livreur a pris la commande. Ailleurs, « Libérer »
+ou « Annuler » suffisent — sans rembourser personne.
+
+### Ce que ça dit du reste
+
+Trois morceaux de code mort en une journée, tous sur le parcours livreur :
+`assignDelivery()`, la notification de départ, `failDelivery()`. Le rôle livreur
+a été écrit puis jamais rebranché. Les écrans préparateur et livreur étaient
+hors périmètre par décision du porteur — mais leur **service** ne l'était pas, et
+personne n'a relu ce qui restait connecté.
+
+### Reste à faire, par ordre d'utilité
+
+1. **Les créneaux** — fermer un jour, ajuster une capacité, suspendre une zone.
+   Depuis ce matin la capacité est défendue par un verrou ; elle n'est toujours
+   pas réglable sans passer par la base.
+2. **Les chiffres** — les 1,80 % FedaPay manquent toujours dans
+   `Order::grossMargin()`.
+3. **Le ménage avant mise en ligne** — `orders.payment_method` a encore `'cash'`
+   par défaut en migration, ce qui contredit « pas de paiement à la livraison ».
+   Contact réel, et 27 produits sur 49 sans photo.
+4. **Relire le parcours livreur en entier.** Trois trouvailles en une journée
+   sur le même chemin : il y en a probablement d'autres.

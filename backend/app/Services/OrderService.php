@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Exceptions\SlotUnavailableException;
+use App\Models\DeliverySlot;
 use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Models\OrderItem;
@@ -31,6 +33,9 @@ class OrderService
     public function createOrder(User $client, array $cartItems, array $data): Order
     {
         return DB::transaction(function () use ($client, $cartItems, $data) {
+            // La derniere place se prend ici, verrou pose. Voir takeSlotSpot().
+            $this->takeSlotSpot($data['delivery_slot_id'], $data['delivery_date']);
+
             /*
              * Axizán ne détient aucun stock : les articles sont retirés chez des
              * fournisseurs partenaires, au moment de la commande.
@@ -123,24 +128,99 @@ class OrderService
     }
 
     /**
-     * Accepter une commande (par préparateur)
+     * Prend une place sur le creneau, ou refuse.
+     *
+     * Le controleur verifie deja la capacite avant d'arriver ici — mais il la
+     * lit HORS transaction, et rend la main avant que la commande soit ecrite.
+     * Deux clients qui visent la derniere place a trois secondes d'ecart
+     * passaient donc tous les deux ce controle.
+     *
+     * Ce n'est pas un detail de robustesse : la capacite d'un creneau EST le
+     * stock reel d'Axizan. Rien d'autre n'est rare ici — les ignames ne
+     * manquent pas au marche, les heures si. Une place vendue deux fois, c'est
+     * un preparateur qui decouvre le matin une commande de trop, et un client
+     * qu'il faut rappeler pour lui reprendre son creneau.
+     *
+     * Le verrou porte sur la LIGNE DU CRENEAU, pas sur les commandes : c'est le
+     * seul point de passage commun a tous ceux qui reservent ce creneau-la. Ils
+     * s'alignent derriere, et chacun compte apres celui qui le precede. Poser
+     * le verrou sur les commandes existantes ne protegerait de rien — ce qu'on
+     * veut empecher, ce sont les lignes qui n'existent pas encore.
+     *
+     * Le controle du controleur n'est pas retire pour autant : il repond plus
+     * vite, avec les autres motifs de refus (creneau ferme, delai trop court,
+     * date hors horizon), et evite d'ouvrir une transaction pour rien. Celui-ci
+     * est le dernier mot.
+     *
+     * Note : sur SQLite — la suite de tests — `lockForUpdate` ne compile rien.
+     * Le verrouillage ne s'eprouve qu'en PostgreSQL. Le refus, lui, se teste.
+     */
+    private function takeSlotSpot($slotId, $date): void
+    {
+        $slot = DeliverySlot::whereKey($slotId)->lockForUpdate()->first();
+
+        if (! $slot || ! $slot->is_active) {
+            throw new SlotUnavailableException('Ce créneau de livraison n’est plus proposé.');
+        }
+
+        if ($slot->bookedCountOn($date) >= $slot->max_orders_per_slot) {
+            throw new SlotUnavailableException('Ce créneau est complet pour cette date.');
+        }
+    }
+
+    /**
+     * Un preparateur prend une commande du marche.
+     *
+     * Plusieurs preparateurs regardent la MEME liste : la commande qui apparait
+     * est visible de tous ceux dont le marche dessert la zone. Deux doigts sur
+     * « Accepter » a la meme seconde passaient tous les deux le controle, et le
+     * second ecrasait le premier — qui etait deja parti acheter l'igname, sans
+     * que rien ne le lui dise. Il revenait au depot avec un panier qui ne lui
+     * appartenait plus.
+     *
+     * La commande est donc relue A L'INTERIEUR de la transaction, verrou pose :
+     * ceux qui arrivent derriere attendent, puis constatent qu'elle est prise.
+     *
+     * Le verrou se relit sur une instance fraiche plutot que sur celle recue en
+     * argument — celle-la a ete chargee avant, et c'est justement l'ecart entre
+     * les deux moments qu'on cherche a fermer. La mise a jour passe par le
+     * modele et non par le constructeur de requetes : un UPDATE de masse ne
+     * declenche pas les evenements Eloquent, et le journal des transitions
+     * — branche sur `updated` — perdrait l'entree.
+     *
+     * Note : sur SQLite (la suite de tests) `lockForUpdate` ne compile rien. Le
+     * verrouillage ne s'eprouve qu'en PostgreSQL ; la relecture, elle, se teste.
      */
     public function acceptOrder(Order $order, User $preparateur): Order
     {
-        if (!$order->canBeAccepted()) {
-            throw new \Exception("Cette commande ne peut pas être acceptée");
-        }
+        $accepted = DB::transaction(function () use ($order, $preparateur) {
+            $fresh = Order::whereKey($order->getKey())->lockForUpdate()->first();
 
-        $order->update([
-            'status' => OrderStatus::ACCEPTED,
-            'preparateur_id' => $preparateur->id,
-            'accepted_at' => now(),
-        ]);
+            if (! $fresh) {
+                throw new \Exception('Cette commande n’existe plus.');
+            }
 
-        $this->notificationService->sendOrderAcceptedNotification($order);
-        Log::info("Order {$order->order_number} accepted by {$preparateur->name}");
+            if ($fresh->preparateur_id && $fresh->preparateur_id !== $preparateur->id) {
+                throw new \Exception('Cette commande vient d’être prise par quelqu’un d’autre.');
+            }
 
-        return $order;
+            if (! $fresh->canBeAccepted()) {
+                throw new \Exception('Cette commande ne peut pas être acceptée');
+            }
+
+            $fresh->update([
+                'status' => OrderStatus::ACCEPTED,
+                'preparateur_id' => $preparateur->id,
+                'accepted_at' => now(),
+            ]);
+
+            return $fresh;
+        });
+
+        $this->notificationService->sendOrderAcceptedNotification($accepted);
+        Log::info("Order {$accepted->order_number} accepted by {$preparateur->name}");
+
+        return $accepted;
     }
 
     /**
@@ -187,25 +267,18 @@ class OrderService
         return $order;
     }
 
-    /**
-     * Assigner livraison
+    /*
+     * assignDelivery() a ete retiree ici.
+     *
+     * Elle etait le seul endroit qui ecrivait `orders.livreur_id` et le seul
+     * qui declenchait le SMS « le livreur est en route » — et elle n'etait
+     * appelee de nulle part. Les deux manques se voyaient en production sans
+     * qu'on sache d'ou ils venaient : contact livreur vide dans la salle de
+     * controle, client jamais prevenu.
+     *
+     * Le vrai chemin passe par DeliveryService : assignOrderToLivreur() pose le
+     * livreur sur la commande, startDelivery() previent le client. Voir la.
      */
-    public function assignDelivery(Order $order, User $livreur): Order
-    {
-        if ($order->status !== OrderStatus::READY) {
-            throw new \Exception("Seules les commandes prêtes peuvent être livrées");
-        }
-
-        $order->update([
-            'livreur_id' => $livreur->id,
-            'status' => OrderStatus::IN_DELIVERY,
-            'delivery_started_at' => now(),
-        ]);
-
-        $this->notificationService->sendDeliveryAssignedNotification($order, $livreur);
-
-        return $order;
-    }
 
     /**
      * Marquer commande livrée
@@ -330,6 +403,70 @@ class OrderService
         Log::info("Order {$order->order_number} cancelled. Reason: {$reason}");
 
         return $order;
+    }
+
+    /**
+     * La course ne revient pas.
+     *
+     * Le seul cas que rien ne savait traiter. Une commande partie en livraison
+     * ne peut ni etre liberee — `release` la refuse, le retrait est deja fait —
+     * ni etre annulee : `canBeCancelled()` exclut IN_DELIVERY, justement pour
+     * qu'on n'annule pas sous les pieds d'un livreur qui roule.
+     *
+     * Ces deux refus sont bons quand la course se deroule. Ils formaient une
+     * impasse quand elle ne se deroule pas : livreur injoignable, moto volee,
+     * quelqu'un qui ne revient jamais. La commande restait IN_DELIVERY a vie,
+     * le client sans nouvelle ni remboursement, et le compte du livreur
+     * impossible a suspendre puisqu'un panier lui restait attribue.
+     *
+     * L'etat honnete est l'annulation. On ne peut pas la remettre au depot : le
+     * panier n'y est plus. Annoncer « prete » a un autre livreur l'enverrait
+     * chercher une marchandise qui n'existe plus sur place.
+     *
+     * La perte est pour Axizan, et elle est ecrite. Le client est rembourse et
+     * prevenu — il a paye d'avance une commande qu'il ne recevra pas.
+     */
+    public function abandonDelivery(Order $order, string $reason, User $actor): Order
+    {
+        $delivery = $order->delivery;
+
+        DB::transaction(function () use ($order, $delivery, $reason, $actor) {
+            $delivery?->update([
+                'status' => \App\Enums\DeliveryStatus::FAILED,
+                'delivery_notes' => $reason,
+            ]);
+
+            OrderEvent::record(
+                $order,
+                'delivery.abandoned',
+                $order->status instanceof \BackedEnum ? $order->status->value : (string) $order->status,
+                OrderStatus::CANCELLED->value,
+                $reason,
+                [
+                    'livreur_id' => $order->livreur_id,
+                    'delivery_id' => $delivery?->id,
+                    'by' => $actor->id,
+                ]
+            );
+
+            $order->update([
+                'status' => OrderStatus::CANCELLED,
+                'cancellation_reason' => $reason,
+            ]);
+
+            // Meme regle que dans cancelOrder() : on se fie au PAIEMENT, pas a
+            // `orders.payment_status`. Ce sont deux colonnes distinctes, et
+            // l'annulation ne doit jamais echouer a cause de l'ecriture
+            // comptable qui la suit.
+            if ($order->payment?->status === \App\Enums\PaymentStatus::COMPLETED) {
+                $this->paymentService->refundPayment($order->payment);
+            }
+        });
+
+        $this->notificationService->sendOrderCancelledNotification($order);
+        Log::warning("Delivery abandoned for order {$order->order_number}. Reason: {$reason}");
+
+        return $order->fresh();
     }
 
     /**

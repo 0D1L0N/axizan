@@ -447,6 +447,12 @@ function AdminPage() {
               <Users size={16} /> Clients
             </Link>
             <Link
+              href="/admin/personnel"
+              className="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-bold text-cream transition hover:bg-cream/10"
+            >
+              <Bike size={16} /> Personnel
+            </Link>
+            <Link
               href="/admin/catalogue"
               className="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-bold text-cream transition hover:bg-cream/10"
             >

@@ -250,6 +250,56 @@ class AdminOrderController extends Controller
     }
 
     /**
+     * Acte qu'une course ne reviendra pas.
+     *
+     * L'issue qui manquait. Une commande partie en livraison ne pouvait ni etre
+     * liberee ni etre annulee — deux refus justes quand la course se deroule,
+     * une impasse quand elle ne se deroule pas. Le client restait sans nouvelle
+     * ni remboursement, et le compte du livreur ne pouvait plus etre suspendu
+     * puisqu'un panier lui restait attribue.
+     *
+     * A n'employer qu'apres avoir essaye de joindre la personne : c'est la
+     * salle de controle qui donne son numero.
+     */
+    public function abandonDelivery(Request $request, $id)
+    {
+        $order = Order::with('delivery', 'payment')->find($id);
+
+        if (! $order) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
+
+        if ($order->status->isTerminal()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'already_closed',
+                'message' => 'Cette commande est déjà close.',
+            ], 422);
+        }
+
+        if (! $order->delivery || ! $order->livreur_id) {
+            return response()->json([
+                'success' => false,
+                'error' => 'not_in_delivery',
+                'message' => 'Aucun livreur n’a pris cette commande. Libérez-la plutôt.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'reason' => 'required|string|max:300',
+        ], [
+            'reason.required' => 'Un motif est obligatoire : le client sera remboursé et prévenu.',
+        ]);
+
+        $this->orders->abandonDelivery($order, $data['reason'], $request->user());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Course close. Le client est remboursé et prévenu.',
+        ]);
+    }
+
+    /**
      * Preparateurs pouvant recevoir cette commande.
      *
      * Filtres sur les marches qui desservent la zone : proposer les autres

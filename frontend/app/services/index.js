@@ -156,6 +156,20 @@ export const adminService = {
   setClientSuspended: (id, suspended, reason) =>
     api.patch(`/admin/clients/${id}/status`, { suspended, reason }),
 
+  /* ---- Le personnel : qui travaille, et qui n'est plus là ---- */
+
+  getStaff: (params) => api.get('/admin/personnel', { params }),
+  getStaffMember: (id) => api.get(`/admin/personnel/${id}`),
+  /**
+   * Suspendre coupe la connexion et détruit les jetons en cours.
+   *
+   * Un préparateur rend ses commandes au marché au passage. Un livreur dont le
+   * panier est encore dans la sacoche est refusé (422 `delivery_in_progress`) :
+   * la marchandise est chez lui, et rien ne permet de rendre une course entamée.
+   */
+  setStaffSuspended: (id, suspended, reason) =>
+    api.patch(`/admin/personnel/${id}/status`, { suspended, reason }),
+
   /* ---- Le catalogue : retirer, corriger, illustrer ---- */
 
   getCatalogue: (params) => api.get('/admin/catalogue', { params }),
@@ -188,6 +202,14 @@ export const adminService = {
   reassignOrder: (id, preparateurId, reason) =>
     api.post(`/admin/orders/${id}/reassign`, { preparateur_id: preparateurId, reason }),
   cancelOrder: (id, reason) => api.post(`/admin/orders/${id}/cancel`, { reason }),
+  /**
+   * La course ne revient pas : livreur injoignable, moto volée.
+   *
+   * Seule issue pour une commande partie en livraison — ni libérable, ni
+   * annulable autrement. Le client est remboursé et prévenu ; la perte est
+   * pour Axizán, et elle est écrite au journal.
+   */
+  abandonDelivery: (id, reason) => api.post(`/admin/orders/${id}/abandon-delivery`, { reason }),
 
   /* ---- Le point fournisseur : ce qu'Axizán doit à chaque étal ---- */
 

@@ -4,17 +4,34 @@ namespace App\Services;
 
 use App\Models\Delivery;
 use App\Models\Order;
+use App\Models\OrderEvent;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class DeliveryService
 {
-    public function __construct(private OrderService $orderService)
-    {}
+    public function __construct(
+        private OrderService $orderService,
+        private NotificationService $notificationService
+    ) {}
 
     /**
-     * Assigner une commande à un livreur
+     * Le livreur prend le panier au depot.
+     *
+     * `orders.livreur_id` est pose ICI, et c'etait le trou : le seul chemin qui
+     * l'ecrivait — OrderService::assignDelivery() — n'etait appele de nulle
+     * part. La colonne restait vide pour TOUTES les commandes, et la salle de
+     * controle affichait un contact « Livreur » systematiquement absent.
+     * L'ecran fait pour joindre la personne en charge ne pouvait pas la nommer,
+     * exactement au moment ou on en a besoin : le client appelle, personne
+     * n'arrive, et l'administrateur n'a aucun numero a composer.
+     *
+     * L'unicite de `deliveries.order_id` sert de garde-fou : deux livreurs qui
+     * touchent « Accepter » a la meme seconde ne peuvent pas ouvrir deux
+     * courses sur le meme panier. Le second est refuse par la base ; le
+     * controleur traduit ce refus en phrase.
      */
     public function assignOrderToLivreur(Order $order, User $livreur): Delivery
     {
@@ -22,15 +39,27 @@ class DeliveryService
             throw new \Exception("Seules les commandes prêtes peuvent être livrées");
         }
 
-        $delivery = Delivery::create([
-            'order_id' => $order->id,
-            'livreur_id' => $livreur->id,
-            'status' => \App\Enums\DeliveryStatus::ASSIGNED,
-        ]);
+        return DB::transaction(function () use ($order, $livreur) {
+            $delivery = Delivery::create([
+                'order_id' => $order->id,
+                'livreur_id' => $livreur->id,
+                'status' => \App\Enums\DeliveryStatus::ASSIGNED,
+            ]);
 
-        Log::info("Delivery assigned for order {$order->order_number} to {$livreur->name}");
+            $order->update(['livreur_id' => $livreur->id]);
 
-        return $delivery;
+            // Le statut de la commande ne change pas ici : le journal ne
+            // l'enregistrerait donc pas de lui-meme. Or « qui est parti avec ce
+            // panier, et quand » est precisement ce qu'on vient y chercher
+            // apres coup.
+            OrderEvent::record($order, 'delivery.assigned', context: [
+                'livreur_id' => $livreur->id,
+            ]);
+
+            Log::info("Delivery assigned for order {$order->order_number} to {$livreur->name}");
+
+            return $delivery;
+        });
     }
 
     /**
@@ -83,6 +112,25 @@ class DeliveryService
             'status' => \App\Enums\OrderStatus::IN_DELIVERY,
             'delivery_started_at' => now(),
         ]);
+
+        /*
+         * Le SMS le plus utile de tout le parcours, et il ne partait pas.
+         *
+         * config/notifications.php declare ORDER_OUT_FOR_DELIVERY en SMS depuis
+         * le debut, avec cette justification : « le client doit etre la ».
+         * Aucun chemin ne l'emettait — son unique appelant etait le code mort
+         * OrderService::assignDelivery(). Le client decouvrait le livreur a sa
+         * porte, ou ne l'entendait pas sonner.
+         *
+         * C'est ici que ca se joue, pas a l'acceptation : au moment ou il prend
+         * le panier, le livreur est encore au depot. Le client n'a rien a faire
+         * de cette information-la. Il en a besoin quand quelqu'un roule vers
+         * chez lui.
+         */
+        $this->notificationService->sendDeliveryStartedNotification(
+            $delivery->order,
+            $delivery->livreur
+        );
 
         return $delivery;
     }
