@@ -59,7 +59,7 @@ class PreparatorController extends Controller
             // Le creneau le plus proche d'abord : c'est l'ordre d'urgence reel,
             // pas la date de commande.
             ->orderBy('delivery_date')
-            ->paginate($request->get('limit', 20));
+            ->paginate($this->perPage($request, 20));
 
         return response()->json([
             'success' => true,

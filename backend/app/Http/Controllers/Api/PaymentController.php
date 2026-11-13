@@ -82,7 +82,7 @@ class PaymentController extends Controller
             ->payments()
             ->with('order')
             ->latest()
-            ->paginate($request->get('limit', 20));
+            ->paginate($this->perPage($request, 20));
 
         return response()->json([
             'success' => true,

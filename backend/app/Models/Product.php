@@ -72,8 +72,12 @@ class Product extends Model
 
     public function scopeSearch($query, $search)
     {
-        return $query->where('name', 'like', "%{$search}%")
-            ->orWhere('description', 'like', "%{$search}%");
+        // Entre parentheses : sinon le OR court-circuite les autres filtres
+        // (disponibilite, categorie) poses sur la meme requete.
+        return $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%");
+        });
     }
 
     public function scopeLowStock($query)

@@ -77,9 +77,15 @@ class Promotion extends Model
 
     public function canBeUsedBy(User $user)
     {
-        if ($this->applicable_to === 'first_order') {
-            return $user->orders()->count() === 0;
+        if ($this->applicable_to === 'first_order' && $user->orders()->exists()) {
+            return false;
         }
+
+        if ($this->max_usage_per_user
+            && $this->usages()->where('user_id', $user->id)->count() >= $this->max_usage_per_user) {
+            return false;
+        }
+
         return true;
     }
 
@@ -107,6 +113,7 @@ class Promotion extends Model
             'user_id' => $user->id,
             'order_id' => $order->id,
             'discount_amount' => $discountAmount,
+            'created_at' => now(),
         ]);
 
         $this->increment('usage_count');

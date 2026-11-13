@@ -27,7 +27,7 @@ class DeliveryController extends Controller
         $orders = Order::where('status', OrderStatus::READY)
             ->with('client', 'deliveryAddress', 'items')
             ->latest()
-            ->paginate($request->get('limit', 20));
+            ->paginate($this->perPage($request, 20));
 
         return response()->json([
             'success' => true,
@@ -132,7 +132,11 @@ class DeliveryController extends Controller
             return response()->json(['success' => false, 'error' => 'not_found'], 404);
         }
 
-        $delivery = $this->deliveryService->startDelivery($delivery);
+        try {
+            $delivery = $this->deliveryService->startDelivery($delivery);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
 
         return response()->json([
             'success' => true,

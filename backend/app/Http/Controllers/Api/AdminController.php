@@ -24,7 +24,7 @@ class AdminController extends Controller
         $orders = Order::where('payment_status', 'pending')
             ->with('client', 'payment')
             ->latest()
-            ->paginate($request->get('limit', 20));
+            ->paginate($this->perPage($request, 20));
 
         return response()->json([
             'success' => true,

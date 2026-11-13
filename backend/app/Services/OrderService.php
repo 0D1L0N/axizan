@@ -81,6 +81,12 @@ class OrderService
                 'client_notes' => $data['client_notes'] ?? null,
             ]);
 
+            // Tracer l'utilisation du code : c'est ce compteur qui fait
+            // respecter les plafonds global et par client.
+            if ($promoDiscount > 0) {
+                Promotion::find($data['promo_code_id'])->recordUsage($client, $order, $promoDiscount);
+            }
+
             // Ajouter les items
             foreach ($cartItems as $item) {
                 $this->addOrderItem($order, $item);
@@ -337,7 +343,9 @@ class OrderService
      */
     private function applyPromotion(User $client, $promoId, float $orderTotal): float
     {
-        $promo = Promotion::find($promoId);
+        // Verrouille : deux commandes simultanees ne doivent pas consommer
+        // ensemble la derniere utilisation autorisee.
+        $promo = Promotion::whereKey($promoId)->lockForUpdate()->first();
 
         if (!$promo || !$promo->isValid()) {
             return 0;
