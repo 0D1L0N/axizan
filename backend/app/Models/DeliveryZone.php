@@ -17,6 +17,10 @@ class DeliveryZone extends Model
         'bounds_sw_lon',
         'base_delivery_fee',
         'extra_fee_per_km',
+        'min_order_amount',
+        'small_order_fee',
+        'small_order_action',
+        'free_delivery_threshold',
         'is_active',
     ];
 
@@ -27,6 +31,9 @@ class DeliveryZone extends Model
         'bounds_sw_lon' => 'float',
         'base_delivery_fee' => 'decimal:2',
         'extra_fee_per_km' => 'decimal:2',
+        'min_order_amount' => 'decimal:2',
+        'small_order_fee' => 'decimal:2',
+        'free_delivery_threshold' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 

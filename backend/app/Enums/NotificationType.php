@@ -17,9 +17,9 @@ enum NotificationType: string
     case ADMIN_ALERT = 'admin_alert';
     case SYSTEM_NOTIFICATION = 'system_notification';
 
-    public static function getLabel(NotificationType $type): string
+    public function getLabel(): string
     {
-        return match ($type) {
+        return match ($this) {
             self::ORDER_ACCEPTED => 'Commande acceptée',
             self::ORDER_PREPARING => 'Commande en préparation',
             self::ORDER_READY => 'Commande prête',

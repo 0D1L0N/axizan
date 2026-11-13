@@ -309,5 +309,8 @@ class DatabaseSeeder extends Seeder
                 $attributes
             );
         }
+
+        // Additional Beninese market categories and samples
+        $this->call(\Database\Seeders\BenineseCategoriesSeeder::class);
     }
 }

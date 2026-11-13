@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -179,9 +180,8 @@ class Order extends Model
             ->max('product.preparation_time_minutes') ?? 30;
     }
 
-    public function generateOrderNumber()
+    public static function generateOrderNumber(): string
     {
-        $count = static::whereDate('created_at', today())->count() + 1;
-        return sprintf('AXZ-%s-%05d', now()->format('Ymd'), $count);
+        return sprintf('AXZ-%s-%s', now()->format('Ymd'), Str::upper(Str::random(8)));
     }
 }

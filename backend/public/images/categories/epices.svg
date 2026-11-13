@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#FFF1F2" rx="20"/>
+  <g transform="translate(40,40)">
+    <circle cx="120" cy="110" r="50" fill="#EF4444"/>
+    <text x="200" y="140" font-family="Segoe UI, Roboto" font-size="22" fill="#7F1D1D">Épices</text>
+  </g>
+</svg>

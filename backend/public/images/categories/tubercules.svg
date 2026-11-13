@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#FFF7ED" rx="20"/>
+  <g transform="translate(40,40)">
+    <ellipse cx="120" cy="120" rx="90" ry="40" fill="#D97706"/>
+    <ellipse cx="60" cy="140" rx="40" ry="18" fill="#B45309"/>
+    <text x="200" y="160" font-family="Segoe UI, Roboto" font-size="22" fill="#7C2D12">Tubercules</text>
+  </g>
+</svg>

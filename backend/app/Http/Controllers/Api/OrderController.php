@@ -17,25 +17,44 @@ class OrderController extends Controller
     /**
      * Créer une commande
      */
-    public function store(Request $request, OrderService $orderService)
+    public function store(Request $request)
     {
         $user = $request->user();
+
+        if (!$user->isClient()) {
+            return response()->json(['success' => false, 'error' => 'forbidden'], 403);
+        }
 
         $validated = $request->validate([
             'delivery_address_id' => 'required|exists:addresses,id',
             'delivery_slot_id' => 'required|exists:delivery_slots,id',
             'delivery_date' => 'required|date|after:today',
-            'payment_method' => 'in:mobile_money,cash,card',
+            'payment_method' => 'required|in:mobile_money,cash,card',
             'promo_code_id' => 'nullable|exists:promotions,id',
             'client_notes' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
+            'items.*.type' => 'required|in:product',
+            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|numeric|gt:0|max:1000',
+            'items.*.quantity_unit' => 'nullable|string|max:20',
+            'items.*.special_instructions' => 'nullable|string|max:500',
+            'items.*.removed_ingredients' => 'nullable|array|max:20',
         ]);
+
+        $addressBelongsToUser = Address::whereKey($validated['delivery_address_id'])
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->exists();
+
+        if (!$addressBelongsToUser) {
+            return response()->json(['success' => false, 'error' => 'invalid_delivery_address'], 422);
+        }
 
         try {
             // TODO: Récupérer les items du panier
             $cartItems = $request->items;
 
-            $order = $orderService->createOrder($user, $cartItems, $validated);
+            $order = $this->orderService->createOrder($user, $cartItems, $validated);
 
             return response()->json([
                 'success' => true,
@@ -89,7 +108,7 @@ class OrderController extends Controller
         $order = Order::with('items', 'client', 'deliveryAddress', 'delivery', 'payment')
             ->find($id);
 
-        if (!$order || ($order->client_id !== $request->user()->id && $request->user()->role !== 'admin')) {
+        if (!$order || ($order->client_id !== $request->user()->id && !$request->user()->isAdmin())) {
             return response()->json([
                 'success' => false,
                 'error' => 'not_found',
@@ -135,7 +154,7 @@ class OrderController extends Controller
     public function updateStatus($id, Request $request)
     {
         // Vérifier permission admin
-        if ($request->user()->role !== 'admin') {
+        if (!$request->user()->isAdmin()) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 

@@ -21,7 +21,6 @@ class AuthController extends Controller
             'email' => 'required|string|email|unique:users',
             'phone' => 'required|string|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:client,preparateur,livreur',
         ]);
 
         if ($validator->fails()) {
@@ -34,7 +33,8 @@ class AuthController extends Controller
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'password' => Hash::make($request->password),
-                'role' => $request->role,
+                // Les rôles opérationnels sont attribués uniquement par un administrateur.
+                'role' => UserRole::CLIENT->value,
                 'status' => 'active',
             ]);
 
@@ -66,7 +66,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password) || $user->status !== 'active') {
             return response()->json([
                 'success' => false,
                 'error' => 'invalid_credentials',
@@ -111,7 +111,7 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $user->update($request->validated());
+        $user->update($validator->validated());
 
         return response()->json([
             'success' => true,

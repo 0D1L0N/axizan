@@ -11,9 +11,9 @@ enum PaymentStatus: string
     case CANCELLED = 'cancelled';
     case REFUNDED = 'refunded';
 
-    public static function getLabel(PaymentStatus $status): string
+    public function getLabel(): string
     {
-        return match ($status) {
+        return match ($this) {
             self::PENDING => 'En attente',
             self::PROCESSING => 'En cours',
             self::COMPLETED => 'Complété',

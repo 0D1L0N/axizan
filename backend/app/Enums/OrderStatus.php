@@ -14,9 +14,9 @@ enum OrderStatus: string
     case CANCELLED = 'cancelled';      // Annulée
     case RETURNED = 'returned';        // Retournée
 
-    public static function getLabel(OrderStatus $status): string
+    public function getLabel(): string
     {
-        return match ($status) {
+        return match ($this) {
             self::PENDING => 'En attente',
             self::ACCEPTED => 'Acceptée',
             self::PREPARING => 'En préparation',
@@ -29,9 +29,9 @@ enum OrderStatus: string
         };
     }
 
-    public static function getEmoji(OrderStatus $status): string
+    public function getEmoji(): string
     {
-        return match ($status) {
+        return match ($this) {
             self::PENDING => '⏳',
             self::ACCEPTED => '✅',
             self::PREPARING => '👨‍🍳',
@@ -44,8 +44,8 @@ enum OrderStatus: string
         };
     }
 
-    public static function isTerminal(OrderStatus $status): bool
+    public function isTerminal(): bool
     {
-        return in_array($status, [self::COMPLETED, self::CANCELLED, self::RETURNED]);
+        return in_array($this, [self::COMPLETED, self::CANCELLED, self::RETURNED], true);
     }
 }

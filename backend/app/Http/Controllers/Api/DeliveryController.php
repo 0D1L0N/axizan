@@ -20,7 +20,7 @@ class DeliveryController extends Controller
     public function listReadyOrders(Request $request)
     {
         // Vérifier rôle livreur
-        if ($request->user()->role !== 'livreur') {
+        if (!$request->user()->isLivreur()) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
@@ -47,7 +47,7 @@ class DeliveryController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'livreur') {
+        if (!$user->isLivreur()) {
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
