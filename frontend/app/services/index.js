@@ -95,6 +95,29 @@ export const adminService = {
   /** `reference_number` est obligatoire : sans référence, le paiement n'est pas traçable. */
   validatePayment: (orderId, proof) => api.post(`/admin/orders/${orderId}/validate-payment`, proof),
   createStaff: (data) => api.post('/admin/staff', data),
+
+  getZones: () => api.get('/admin/delivery-zones'),
+  createZone: (data) => api.post('/admin/delivery-zones', data),
+  updateZone: (id, data) => api.put(`/admin/delivery-zones/${id}`, data),
+  deleteZone: (id) => api.delete(`/admin/delivery-zones/${id}`),
+
+  getSlots: () => api.get('/admin/delivery-slots'),
+  createSlot: (data) => api.post('/admin/delivery-slots', data),
+  updateSlot: (id, data) => api.put(`/admin/delivery-slots/${id}`, data),
+  deleteSlot: (id) => api.delete(`/admin/delivery-slots/${id}`),
+
+  getPendingKyc: () => api.get('/admin/kyc/pending'),
+  /** Le document est prive : on le recupere avec le jeton, pas via un lien public. */
+  getKycDocument: (id) => api.get(`/admin/kyc/${id}/document`, { responseType: 'blob' }),
+  approveKyc: (id) => api.post(`/admin/kyc/${id}/approve`),
+  rejectKyc: (id, reason) => api.post(`/admin/kyc/${id}/reject`, { reason }),
+};
+
+export const kycService = {
+  getStatus: () => api.get('/livreur/kyc'),
+  submit: (formData) => api.post('/livreur/kyc', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 export const cartService = {

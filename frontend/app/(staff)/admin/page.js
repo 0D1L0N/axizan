@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { adminService } from '@/app/services';
 import { withRole } from '@/app/lib/auth-hoc';
 import Header from '@/app/components/Header';
@@ -57,6 +58,10 @@ function AdminPage() {
       <Header />
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         <h1 className="text-3xl font-bold">🛠️ Espace Admin</h1>
+        <nav className="flex flex-wrap gap-2">
+          <Link href="/admin/zones" className="border rounded px-4 py-2 font-semibold hover:bg-gray-100">🗺️ Zones et créneaux</Link>
+          <Link href="/admin/kyc" className="border rounded px-4 py-2 font-semibold hover:bg-gray-100">🪪 Vérification des livreurs</Link>
+        </nav>
         {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>}
         {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">{success}</div>}
 

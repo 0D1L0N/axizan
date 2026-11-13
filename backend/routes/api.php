@@ -15,6 +15,10 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\RecurringBasketController;
 use App\Http\Controllers\Api\PaymentMethodController;
+use App\Http\Controllers\Api\KycController;
+use App\Http\Controllers\Admin\DeliverySlotController as AdminDeliverySlotController;
+use App\Http\Controllers\Admin\DeliveryZoneController as AdminDeliveryZoneController;
+use App\Http\Controllers\Admin\KycController as AdminKycController;
 
 /*
 |--------------------------------------------------------------------------
@@ -127,6 +131,20 @@ Route::prefix('v1')->group(function () {
             Route::get('/payments/pending', [AdminController::class, 'pendingPayments']);
             Route::post('/orders/{id}/validate-payment', [AdminController::class, 'validatePayment']);
             Route::post('/staff', [AdminController::class, 'createStaff']);
+
+            // Zones et creneaux de livraison
+            Route::apiResource('delivery-zones', AdminDeliveryZoneController::class);
+            Route::apiResource('delivery-slots', AdminDeliverySlotController::class);
+
+            // Verification d'identite des livreurs
+            Route::get('/kyc/pending', [AdminKycController::class, 'index']);
+            Route::get('/kyc/{id}/document', [AdminKycController::class, 'document']);
+            Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve']);
+            Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject']);
         });
+
+        // Verification d'identite (livreur)
+        Route::get('/livreur/kyc', [KycController::class, 'show']);
+        Route::post('/livreur/kyc', [KycController::class, 'submit']);
     });
 });

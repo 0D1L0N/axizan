@@ -37,10 +37,12 @@ class DeliverySlot extends Model
         'max_orders_per_slot',
         'is_active',
         'priority',
+        'additional_fee',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'additional_fee' => 'decimal:2',
     ];
 
     public function zone()

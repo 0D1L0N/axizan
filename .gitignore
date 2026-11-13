@@ -32,3 +32,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Outils locaux (Node portable) et journaux du serveur de dev
+/.tools/
+/frontend/.next-dev*.log

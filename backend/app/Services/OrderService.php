@@ -46,7 +46,11 @@ class OrderService
 
             // Calculer les totaux
             $subtotal = $this->calculateSubtotal($cartItems);
-            $deliveryFee = $this->calculateDeliveryFee($data['delivery_address_id']);
+            $deliveryFee = $this->calculateDeliveryFee(
+                $data['delivery_address_id'],
+                $data['delivery_slot_id'] ?? null,
+                $subtotal
+            );
             $tax = $this->calculateTax($subtotal);
             $promoDiscount = 0;
 
@@ -261,13 +265,40 @@ class OrderService
     }
 
     /**
-     * Calculer les frais de livraison depuis la zone de l'adresse
+     * Calculer les frais de livraison : base de la zone de l'adresse,
+     * supplement du creneau, puis regles de la zone (livraison offerte,
+     * minimum de commande).
      */
-    private function calculateDeliveryFee($addressId): int
+    private function calculateDeliveryFee($addressId, $slotId, float $subtotal): int
     {
         $address = \App\Models\Address::with('zone')->find($addressId);
+        $zone = $address?->zone;
+        $slot = $slotId ? \App\Models\DeliverySlot::find($slotId) : null;
 
-        return Money::round($address?->zone?->base_delivery_fee ?? self::DEFAULT_DELIVERY_FEE);
+        $fee = (float) ($zone?->base_delivery_fee ?? self::DEFAULT_DELIVERY_FEE);
+        $fee += (float) ($slot?->additional_fee ?? 0);
+
+        if (!$zone) {
+            return Money::round($fee);
+        }
+
+        if ($zone->free_delivery_threshold !== null && $subtotal >= (float) $zone->free_delivery_threshold) {
+            $fee = 0;
+        }
+
+        if ($subtotal < (float) $zone->min_order_amount) {
+            if ($zone->small_order_action === 'block') {
+                throw new \Exception(sprintf(
+                    'Le minimum de commande pour la zone %s est de %s FCFA.',
+                    $zone->name,
+                    number_format(Money::round($zone->min_order_amount), 0, ',', ' ')
+                ));
+            }
+
+            $fee += (float) $zone->small_order_fee;
+        }
+
+        return Money::round($fee);
     }
 
     /**

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { deliveryService } from '@/app/services';
 import { withRole } from '@/app/lib/auth-hoc';
 import Header from '@/app/components/Header';
+import KycCard from '@/app/components/KycCard';
 
 function LivreurPage() {
   const [ready, setReady] = useState([]);
@@ -53,6 +54,7 @@ function LivreurPage() {
       <Header />
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         <h1 className="text-3xl font-bold">🚚 Espace Livreur</h1>
+        <KycCard />
         {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>}
 
         <section>
