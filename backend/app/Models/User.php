@@ -39,6 +39,7 @@ class User extends Authenticatable
 
     protected $hidden = [
         'password',
+        'remember_token',
         // Chemin interne d'une piece d'identite : ne sort que par l'endpoint admin.
         'kyc_document_url',
     ];
