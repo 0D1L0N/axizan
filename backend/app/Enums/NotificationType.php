@@ -4,7 +4,9 @@ namespace App\Enums;
 
 enum NotificationType: string
 {
+    case ORDER_CREATED = 'order_created';
     case ORDER_ACCEPTED = 'order_accepted';
+    case ORDER_CANCELLED = 'order_cancelled';
     case ORDER_PREPARING = 'order_preparing';
     case ORDER_READY = 'order_ready';
     case ORDER_OUT_FOR_DELIVERY = 'order_out_for_delivery';
@@ -20,7 +22,9 @@ enum NotificationType: string
     public function getLabel(): string
     {
         return match ($this) {
+            self::ORDER_CREATED => 'Commande reçue',
             self::ORDER_ACCEPTED => 'Commande acceptée',
+            self::ORDER_CANCELLED => 'Commande annulée',
             self::ORDER_PREPARING => 'Commande en préparation',
             self::ORDER_READY => 'Commande prête',
             self::ORDER_OUT_FOR_DELIVERY => 'Commande en cours de livraison',

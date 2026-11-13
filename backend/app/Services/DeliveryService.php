@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Storage;
 
 class DeliveryService
 {
+    public function __construct(private OrderService $orderService)
+    {}
+
     /**
      * Assigner une commande à un livreur
      */
@@ -84,9 +87,14 @@ class DeliveryService
         $photoUrl = null;
 
         if ($photoFile) {
-            // Stocker la photo de preuve
-            $path = $photoFile->store('deliveries/' . $delivery->id, 's3');
-            $photoUrl = Storage::disk('s3')->url($path);
+            // Disque 'public' explicite : le disque par defaut est 'local',
+            // c'est-a-dire storage/app, qui n'est servi par aucune URL. La
+            // photo y etait ecrite puis referencee par un lien mort — produite,
+            // stockee, et injoignable.
+            //
+            // Necessite `php artisan storage:link` (voir README).
+            $path = $photoFile->store('deliveries/' . $delivery->id, 'public');
+            $photoUrl = Storage::disk('public')->url($path);
         }
 
         $delivery->update([
@@ -97,11 +105,12 @@ class DeliveryService
             'delivery_notes' => $notes,
         ]);
 
-        // Mettre à jour la commande
+        // Mettre à jour la commande puis la compléter (paiement déjà validé en amont)
         $delivery->order->update([
             'status' => \App\Enums\OrderStatus::DELIVERED,
             'delivered_at' => now(),
         ]);
+        $this->orderService->completeOrder($delivery->order);
 
         Log::info("Delivery {$delivery->id} confirmed");
 

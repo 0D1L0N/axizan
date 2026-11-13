@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
-  <rect width="400" height="300" fill="#EBF8FF" rx="20"/>
-  <g transform="translate(40,40)">
-    <path d="M20 160 q60 -120 160 0 q40 -60 80 0" fill="#60A5FA"/>
-    <text x="200" y="160" font-family="Segoe UI, Roboto" font-size="22" fill="#0B3D91">Mer</text>
-  </g>
-</svg>

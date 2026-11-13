@@ -5,6 +5,7 @@ import { useAuth } from '@/app/contexts/AuthContext';
 import { orderService } from '@/app/services';
 import OrderCard from '@/app/components/OrderCard';
 import Header from '@/app/components/Header';
+import Footer from '@/app/components/Footer';
 import { withAuth } from '@/app/lib/auth-hoc';
 
 function OrdersPage() {
@@ -76,6 +77,7 @@ function OrdersPage() {
           </div>
         )}
       </main>
+      <Footer />
     </>
   );
 }

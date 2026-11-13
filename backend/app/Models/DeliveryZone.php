@@ -42,6 +42,11 @@ class DeliveryZone extends Model
         return $this->hasMany(DeliverySlot::class, 'zone_id');
     }
 
+    public function addresses()
+    {
+        return $this->hasMany(Address::class, 'delivery_zone_id');
+    }
+
     // Scopes
     public function scopeActive($query)
     {

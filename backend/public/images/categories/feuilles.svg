@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
-  <rect width="400" height="300" fill="#F0FFF4" rx="20"/>
-  <g transform="translate(40,40)">
-    <path d="M100 140 q30 -60 60 0 q-30 40 -60 0" fill="#34D399"/>
-    <text x="200" y="160" font-family="Segoe UI, Roboto" font-size="22" fill="#027A48">Feuilles</text>
-  </g>
-</svg>

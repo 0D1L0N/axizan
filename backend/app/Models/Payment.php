@@ -24,13 +24,25 @@ class Payment extends Model
         'mobile_money_transaction_id',
         'error_message',
         'completed_at',
+        'payer_declared_reference',
+        'payer_declared_at',
+        'validated_by',
+        'validated_at',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'status' => PaymentStatus::class,
         'completed_at' => 'datetime',
+        'validated_at' => 'datetime',
+        'payer_declared_at' => 'datetime',
     ];
+
+    /** Qui a validé ce paiement manuellement. */
+    public function validator()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
+    }
 
     public function order()
     {

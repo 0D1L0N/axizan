@@ -46,6 +46,6 @@ enum OrderStatus: string
 
     public function isTerminal(): bool
     {
-        return in_array($this, [self::COMPLETED, self::CANCELLED, self::RETURNED], true);
+        return in_array($this, [self::COMPLETED, self::CANCELLED, self::RETURNED]);
     }
 }

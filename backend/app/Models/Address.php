@@ -17,8 +17,10 @@ class Address extends Model
         'numero_rue',
         'latitude',
         'longitude',
+        'maps_url',
         'detailed_instructions',
         'landmark',
+        'delivery_zone_id',
         'is_default',
         'is_active',
     ];
@@ -38,6 +40,11 @@ class Address extends Model
     public function orders()
     {
         return $this->hasMany(Order::class, 'delivery_address_id');
+    }
+
+    public function zone()
+    {
+        return $this->belongsTo(DeliveryZone::class, 'delivery_zone_id');
     }
 
     // Scopes

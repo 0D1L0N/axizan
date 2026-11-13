@@ -1,30 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/app/contexts/CartContext';
-import { orderService } from '@/app/services';
 import CartItem from '@/app/components/CartItem';
 import Header from '@/app/components/Header';
+import Footer from '@/app/components/Footer';
 import Link from 'next/link';
 
 export default function CartPage() {
   const { items, subtotal, total, promoCode, setPromoCode, setPromoDiscount, clearCart } = useCart();
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (items.length === 0) {
       alert('Votre panier est vide');
       return;
     }
 
-    setLoading(true);
-    try {
-      // TODO: Rediriger vers page de livraison et paiement
-      // await orderService.createOrder({...})
-      console.log('Procéder au paiement avec:', items);
-    } finally {
-      setLoading(false);
-    }
+    router.push('/checkout');
   };
 
   return (
@@ -100,10 +93,9 @@ export default function CartPage() {
                 {/* Actions */}
                 <button
                   onClick={handleCheckout}
-                  disabled={loading}
-                  className="w-full bg-primary text-white font-semibold py-3 rounded-lg hover:bg-red-700 disabled:bg-gray-400"
+                  className="w-full bg-primary text-white font-semibold py-3 rounded-lg hover:bg-red-700"
                 >
-                  {loading ? 'Traitement...' : 'Procéder au paiement'}
+                  Procéder à la livraison
                 </button>
 
                 <button
@@ -121,6 +113,7 @@ export default function CartPage() {
           </div>
         )}
       </main>
+      <Footer />
     </>
   );
 }

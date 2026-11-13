@@ -12,15 +12,25 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    /**
+     * Mail de reinitialisation en francais, a la place de celui de Laravel.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+    }
+
     protected $fillable = [
         'name',
         'email',
         'phone',
         'password',
         'role',
+        'market_id',
         'status',
         'avatar_url',
         'bio',
+        'notification_preferences',
         'kyc_verified',
         'kyc_document_url',
         'email_verified_at',
@@ -29,10 +39,13 @@ class User extends Authenticatable
 
     protected $hidden = [
         'password',
+        // Chemin interne d'une piece d'identite : ne sort que par l'endpoint admin.
+        'kyc_document_url',
     ];
 
     protected $casts = [
         'role' => UserRole::class,
+        'notification_preferences' => 'array',
         'email_verified_at' => 'datetime',
         'phone_verified_at' => 'datetime',
         'kyc_verified' => 'boolean',
@@ -40,6 +53,12 @@ class User extends Authenticatable
     ];
 
     // Relationships
+    /** Marche de rattachement (preparateurs). */
+    public function market()
+    {
+        return $this->belongsTo(Market::class);
+    }
+
     public function addresses()
     {
         return $this->hasMany(Address::class);
@@ -73,6 +92,11 @@ class User extends Authenticatable
     public function receivedReviews()
     {
         return $this->hasMany(Review::class, 'reviewee_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
     }
 
     // Scopes

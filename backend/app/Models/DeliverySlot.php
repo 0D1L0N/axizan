@@ -2,12 +2,31 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DeliverySlot extends Model
 {
     use HasFactory;
+
+    /**
+     * Delai minimum entre la commande et le DEBUT du creneau choisi.
+     *
+     * Le preparateur doit avoir le temps d'aller au marche, d'acheter et de
+     * remettre au livreur. Commande passee a 10h00 : le creneau 11h-12h est le
+     * premier acceptable. A 10h01, il ne l'est plus — on ne promet pas ce qu'on
+     * ne peut pas tenir.
+     */
+    public const LEAD_TIME_MINUTES = 60;
+
+    /** Horaires des marches beninois : rien a acheter en dehors. */
+    public const MARKET_OPENS_AT = '08:00';
+    public const MARKET_CLOSES_AT = '19:00';
+
+    /** On n'ouvre pas la reservation indefiniment : les prix bougent. */
+    public const BOOKING_HORIZON_DAYS = 7;
 
     protected $fillable = [
         'zone_id',
@@ -16,7 +35,6 @@ class DeliverySlot extends Model
         'time_end',
         'display_label',
         'max_orders_per_slot',
-        'current_orders_count',
         'is_active',
         'priority',
         'additional_fee',
@@ -43,32 +61,81 @@ class DeliverySlot extends Model
         return $query->where('is_active', true);
     }
 
-    public function scopeAvailable($query)
+    /**
+     * Places restantes a une date donnee.
+     *
+     * Il n'existe volontairement plus de version « sans date » : la capacite
+     * d'un creneau n'a de sens que rapportee a un jour.
+     */
+    public function availableSpotsOn($date): int
     {
-        return $query->active()
-            ->whereRaw('current_orders_count < max_orders_per_slot');
+        return max(0, $this->max_orders_per_slot - $this->bookedCountOn($date));
     }
 
-    // Helpers
-    public function isAvailable()
+    // ---------------------------------------------------------------------
+    // Disponibilite datee
+    //
+    // Un creneau n'est pas disponible dans l'absolu : il l'est *pour une date*.
+    // Le compteur current_orders_count est cumulatif et ne se remet jamais a
+    // zero — s'y fier reviendrait a fermer definitivement un creneau apres N
+    // commandes. La capacite se compte donc sur les commandes du jour vise.
+    // ---------------------------------------------------------------------
+
+    /**
+     * Instant de debut de ce creneau a la date donnee, en heure locale.
+     */
+    public function startsOn($date): Carbon
     {
-        return $this->is_active && $this->current_orders_count < $this->max_orders_per_slot;
+        return Carbon::parse($date)->startOfDay()->setTimeFromTimeString($this->time_start);
     }
 
-    public function getAvailableSpotsAttribute()
+    /**
+     * Le creneau respecte-t-il le delai minimum a cette date ?
+     */
+    public function isBookableOn($date, ?Carbon $now = null): bool
     {
-        return $this->max_orders_per_slot - $this->current_orders_count;
+        $now = ($now ?: Carbon::now())->copy();
+
+        return $this->startsOn($date)->gte($now->addMinutes(self::LEAD_TIME_MINUTES));
     }
 
-    public function incrementOrderCount()
+    /**
+     * Nombre de commandes non annulees deja placees sur ce creneau, ce jour-la.
+     */
+    public function bookedCountOn($date): int
     {
-        $this->increment('current_orders_count');
+        return $this->orders()
+            ->whereDate('delivery_date', Carbon::parse($date)->toDateString())
+            ->where('status', '!=', OrderStatus::CANCELLED->value)
+            ->count();
     }
 
-    public function decrementOrderCount()
+    /**
+     * Comptage groupe pour une date : evite une requete par creneau.
+     *
+     * @return array<int, int> [delivery_slot_id => nombre de commandes]
+     */
+    public static function bookedCountsOn($date): array
     {
-        if ($this->current_orders_count > 0) {
-            $this->decrement('current_orders_count');
-        }
+        return Order::whereDate('delivery_date', Carbon::parse($date)->toDateString())
+            ->where('status', '!=', OrderStatus::CANCELLED->value)
+            ->whereNotNull('delivery_slot_id')
+            ->selectRaw('delivery_slot_id, COUNT(*) as total')
+            ->groupBy('delivery_slot_id')
+            ->pluck('total', 'delivery_slot_id')
+            ->map(fn ($total) => (int) $total)
+            ->all();
+    }
+
+    /**
+     * Date de livraison acceptable ? (aujourd'hui .. aujourd'hui + horizon)
+     */
+    public static function isDateWithinHorizon($date, ?Carbon $now = null): bool
+    {
+        $now = $now ?: Carbon::now();
+        $target = Carbon::parse($date)->startOfDay();
+
+        return $target->gte($now->copy()->startOfDay())
+            && $target->lte($now->copy()->startOfDay()->addDays(self::BOOKING_HORIZON_DAYS));
     }
 }

@@ -40,15 +40,47 @@ class PaymentService
     }
 
     /**
+     * Créer un paiement en attente de validation manuelle (admin)
+     */
+    public function createManualPayment(Order $order, ?string $provider = null, ?string $payerPhone = null): Payment
+    {
+        $payment = Payment::create([
+            'order_id' => $order->id,
+            'user_id' => $order->client_id,
+            'amount' => $order->total,
+            'currency' => 'XOF',
+            'payment_method' => 'manual',
+            'status' => PaymentStatus::PENDING,
+            // Operateur choisi et numero payeur : l'administrateur sait ou
+            // chercher la transaction au lieu de fouiller trois comptes.
+            'payment_provider' => $provider,
+            'phone_number' => $payerPhone,
+        ]);
+
+        Log::info("Manual payment created for order {$order->order_number}, awaiting admin validation");
+
+        return $payment;
+    }
+
+    /**
      * Confirmer un paiement
      */
-    public function confirmPayment(Payment $payment, $transactionId = null): Payment
-    {
-        $payment->update([
+    public function confirmPayment(
+        Payment $payment,
+        $transactionId = null,
+        ?string $reference = null,
+        ?\App\Models\User $validator = null,
+        array $extra = []
+    ): Payment {
+        $payment->update(array_merge([
             'status' => PaymentStatus::COMPLETED,
             'transaction_id' => $transactionId ?? $payment->transaction_id,
             'completed_at' => now(),
-        ]);
+            // Trace de la validation manuelle : qui, quand, sur quelle preuve.
+            'reference_number' => $reference ?? $payment->reference_number,
+            'validated_by' => $validator?->id ?? $payment->validated_by,
+            'validated_at' => $validator ? now() : $payment->validated_at,
+        ], $extra));
 
         // Mettre à jour le statut de la commande
         $payment->order->update([

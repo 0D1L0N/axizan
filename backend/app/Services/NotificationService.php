@@ -6,6 +6,8 @@ use App\Enums\NotificationType;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\OrderUpdateNotification;
+use Illuminate\Support\Facades\Log;
 
 class NotificationService
 {
@@ -16,7 +18,7 @@ class NotificationService
     {
         $this->notify(
             $order->client,
-            NotificationType::ORDER_ACCEPTED,
+            NotificationType::ORDER_CREATED,
             "Commande #{$order->order_number}",
             "Votre commande a été créée. En attente de confirmation.",
             ['order_id' => $order->id]
@@ -136,7 +138,7 @@ class NotificationService
     {
         $this->notify(
             $order->client,
-            NotificationType::ORDER_ACCEPTED,
+            NotificationType::ORDER_CANCELLED,
             "❌ Commande annulée",
             "Votre commande #{$order->order_number} a été annulée",
             ['order_id' => $order->id]
@@ -157,26 +159,86 @@ class NotificationService
             'is_sent_in_app' => true,
         ]);
 
-        // TODO: Envoyer SMS/Email selon préférences utilisateur
-        // $this->sendSMS($user, $title, $message);
-        // $this->sendEmail($user, $title, $message);
+        // L'in-app est toujours ecrit ; mail et SMS suivent le routage par
+        // type (config/notifications.php) et les preferences du client.
+        $channels = config('notifications.channels.'.$type->value, []);
+        $order = isset($data['order_id']) ? Order::find($data['order_id']) : null;
+
+        if (in_array('mail', $channels, true) && $this->allows($user, $type, 'email')) {
+            $notification->is_sent_email = $this->sendEmail($user, $type, $title, $message, $order);
+        }
+
+        if (in_array('sms', $channels, true) && $this->allows($user, $type, 'sms')) {
+            $notification->is_sent_sms = $this->sendSMS($user, $type, $message, $order);
+        }
+
+        $notification->save();
 
         return $notification;
     }
 
     /**
-     * Envoyer SMS (TODO: Intégrer Twilio/provider local)
+     * Le client accepte-t-il ce canal ?
+     *
+     * Les notifications transactionnelles — argent, livraison imminente — ne
+     * se coupent pas : les desactiver ferait perdre des commandes payees.
      */
-    private function sendSMS(User $user, $title, $message)
+    private function allows(User $user, NotificationType $type, string $channel): bool
     {
-        // Implementation SMS
+        if (in_array($type->value, config('notifications.transactional', []), true)) {
+            return true;
+        }
+
+        $preferences = $user->notification_preferences ?? [];
+
+        return (bool) ($preferences[$channel] ?? true);
     }
 
     /**
-     * Envoyer Email (TODO)
+     * SMS. La passerelle par defaut ecrit dans les journaux : aucun
+     * agregateur n'est encore contractualise (voir config/sms.php).
      */
-    private function sendEmail(User $user, $title, $message)
+    private function sendSMS(User $user, NotificationType $type, string $message, ?Order $order): bool
     {
-        // Implementation Email
+        if (blank($user->phone)) {
+            return false;
+        }
+
+        // Un SMS se paie au segment de 160 caracteres : on va droit au but,
+        // avec la seule chose qui compte — le numero de commande.
+        $text = $order
+            ? "Axizán : {$message} (commande {$order->order_number})"
+            : "Axizán : {$message}";
+
+        try {
+            return app(SmsService::class)->send($user->phone, $text);
+        } catch (\Throwable $e) {
+            // Un envoi rate ne doit jamais faire echouer la commande qui l'a
+            // declenche.
+            Log::warning('Envoi SMS impossible', ['user' => $user->id, 'error' => $e->getMessage()]);
+
+            return false;
+        }
     }
+
+    /**
+     * E-mail, mis en file : un SMTP lent ne doit pas retarder la commande.
+     */
+    private function sendEmail(User $user, NotificationType $type, string $title, string $message, ?Order $order): bool
+    {
+        if (blank($user->email)) {
+            return false;
+        }
+
+        try {
+            $user->notify(new OrderUpdateNotification($type, $title, $message, $order));
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('Envoi e-mail impossible', ['user' => $user->id, 'error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
 }

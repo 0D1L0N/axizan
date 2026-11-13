@@ -2,49 +2,95 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\NotificationType;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class KycController extends Controller
 {
-    // Lister les livreurs en attente de KYC
+    public function __construct(private NotificationService $notificationService)
+    {}
+
+    /**
+     * Livreurs ayant depose un document non encore verifie.
+     */
     public function index()
     {
-        $users = User::where('role', 'livreur')
-            ->where('status', 'pending_kyc')
-            ->get(['id','name','email','phone','kyc_document_url','status','kyc_verified']);
+        $livreurs = User::where('role', UserRole::LIVREUR->value)
+            ->whereNotNull('kyc_document_url')
+            ->where('kyc_verified', false)
+            ->orderBy('updated_at')
+            ->get(['id', 'name', 'email', 'phone', 'updated_at']);
 
-        return response()->json($users);
+        return response()->json(['success' => true, 'data' => $livreurs]);
     }
 
-    // Approuver KYC
+    /**
+     * Le document n'est servi qu'ici, a un administrateur authentifie.
+     */
+    public function document($id)
+    {
+        $livreur = $this->findLivreur($id);
+
+        if (!$livreur || !$livreur->kyc_document_url || !Storage::disk('local')->exists($livreur->kyc_document_url)) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
+
+        return Storage::disk('local')->response($livreur->kyc_document_url);
+    }
+
     public function approve($id)
     {
-        $user = User::find($id);
-        if (! $user) return response()->json(['message' => 'not_found'], 404);
+        $livreur = $this->findLivreur($id);
 
-        $user->kyc_verified = true;
-        $user->status = 'active';
-        $user->save();
+        if (!$livreur || !$livreur->kyc_document_url) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
 
-        // TODO: send notification to user
+        $livreur->forceFill(['kyc_verified' => true])->save();
 
-        return response()->json(['success' => true, 'data' => $user]);
+        $this->notificationService->notify(
+            $livreur,
+            NotificationType::SYSTEM_NOTIFICATION,
+            'Identité vérifiée',
+            'Votre pièce d’identité a été validée.'
+        );
+
+        return response()->json(['success' => true, 'data' => $livreur]);
     }
 
-    // Rejeter KYC
+    /**
+     * Le motif est obligatoire : le livreur doit savoir quoi corriger.
+     */
     public function reject(Request $request, $id)
     {
-        $user = User::find($id);
-        if (! $user) return response()->json(['message' => 'not_found'], 404);
+        $validated = $request->validate(['reason' => 'required|string|max:500']);
 
-        $reason = $request->get('reason');
-        $user->kyc_verified = false;
-        $user->status = 'kyc_rejected';
-        $user->save();
+        $livreur = $this->findLivreur($id);
 
-        // Optionally store rejection reason in audit or notes
+        if (!$livreur || !$livreur->kyc_document_url) {
+            return response()->json(['success' => false, 'error' => 'not_found'], 404);
+        }
+
+        Storage::disk('local')->delete($livreur->kyc_document_url);
+        $livreur->forceFill(['kyc_document_url' => null, 'kyc_verified' => false])->save();
+
+        $this->notificationService->notify(
+            $livreur,
+            NotificationType::SYSTEM_NOTIFICATION,
+            'Document refusé',
+            'Votre pièce d’identité a été refusée : '.$validated['reason'].'. Merci d’en envoyer une nouvelle.'
+        );
+
         return response()->json(['success' => true]);
+    }
+
+    private function findLivreur($id): ?User
+    {
+        return User::where('role', UserRole::LIVREUR->value)->find($id);
     }
 }

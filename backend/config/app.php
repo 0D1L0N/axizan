@@ -55,6 +55,12 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | Base des liens destines a l'utilisateur (mails de reinitialisation).
+    | L'API et l'interface sont deux hotes distincts : APP_URL ne convient pas.
+    */
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

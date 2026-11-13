@@ -8,13 +8,18 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\User;
-use App\Models\DeliverySlot;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Carbon;
 
 class OrderService
 {
+    /** Taux appliqué au sous-total, en pourcentage. */
+    private const TAX_RATE_PERCENT = 10.0;
+
+    /** Frais retenus quand l'adresse n'est rattachée à aucune zone. */
+    private const DEFAULT_DELIVERY_FEE = 500;
+
     public function __construct(
         private NotificationService $notificationService,
         private PaymentService $paymentService
@@ -26,47 +31,26 @@ class OrderService
     public function createOrder(User $client, array $cartItems, array $data): Order
     {
         return DB::transaction(function () use ($client, $cartItems, $data) {
-            $products = [];
-
-            // Verrouiller le stock avant de calculer le total afin d'éviter les surventes.
+            // Valider le stock
             foreach ($cartItems as $item) {
-                $product = Product::query()->lockForUpdate()->find($item['product_id']);
-
-                if (!$product || !$product->is_available) {
-                    throw new \Exception('Un produit demandé n’est plus disponible.');
+                if ($item['type'] === 'product') {
+                    $product = Product::find($item['product_id']);
+                    if (!$product || !$product->is_available) {
+                        throw new \Exception("Produit non disponible: {$product->name}");
+                    }
+                    if ($product->stock_quantity < $item['quantity']) {
+                        throw new \Exception("Stock insuffisant pour: {$product->name}");
+                    }
                 }
-
-                if ($product->stock_quantity < $item['quantity']) {
-                    throw new \Exception("Stock insuffisant pour : {$product->name}");
-                }
-
-                $products[$product->id] = $product;
             }
 
-            $deliverySlot = DeliverySlot::query()
-                ->with('zone')
-                ->lockForUpdate()
-                ->find($data['delivery_slot_id']);
-
-            if (!$deliverySlot || !$deliverySlot->isAvailable()) {
-                throw new \Exception('Ce créneau de livraison n’est plus disponible.');
-            }
-
-            $deliveryDay = Carbon::parse($data['delivery_date'])->dayOfWeekIso - 1;
-            if ($deliverySlot->day_of_week !== null && $deliverySlot->day_of_week !== $deliveryDay) {
-                throw new \Exception('Ce créneau ne correspond pas au jour de livraison choisi.');
-            }
-
-            // Tous les montants viennent du serveur, jamais de la requête cliente.
-            $subtotal = $this->calculateSubtotal($cartItems, $products);
-            // Calcul initial des frais de livraison: base zone + frais créneau
-            $deliveryFee = $deliverySlot->zone->base_delivery_fee;
-            $deliveryFee += $deliverySlot->additional_fee ?? 0;
-
-            // Appliquer seuil de livraison gratuite par zone
-            if (!empty($deliverySlot->zone->free_delivery_threshold) && $subtotal >= $deliverySlot->zone->free_delivery_threshold) {
-                $deliveryFee = 0;
-            }
+            // Calculer les totaux
+            $subtotal = $this->calculateSubtotal($cartItems);
+            $deliveryFee = $this->calculateDeliveryFee(
+                $data['delivery_address_id'],
+                $data['delivery_slot_id'] ?? null,
+                $subtotal
+            );
             $tax = $this->calculateTax($subtotal);
             $promoDiscount = 0;
 
@@ -76,23 +60,6 @@ class OrderService
             }
 
             $total = $subtotal + $deliveryFee + $tax - $promoDiscount;
-
-            // Vérifier montant minimum de commande par zone
-            $minOrder = $deliverySlot->zone->min_order_amount ?? 0;
-            $smallOrderFee = $deliverySlot->zone->small_order_fee ?? 0;
-            $smallOrderAction = $deliverySlot->zone->small_order_action ?? 'apply_fee';
-
-            if ($subtotal < $minOrder) {
-                if ($smallOrderAction === 'block') {
-                    throw new \Exception('Le montant du panier est inférieur au minimum autorisé pour cette zone.');
-                }
-
-                // Appliquer frais petite commande si demandé
-                if ($smallOrderFee > 0) {
-                    $deliveryFee += $smallOrderFee;
-                    $total += $smallOrderFee;
-                }
-            }
 
             // Créer la commande
             $order = Order::create([
@@ -109,19 +76,25 @@ class OrderService
                 'total' => $total,
                 'promo_code_id' => $data['promo_code_id'] ?? null,
                 'promo_discount' => $promoDiscount,
-                'payment_method' => $data['payment_method'] ?? 'mobile_money',
+                'payment_method' => $data['payment_method'] ?? 'manual',
                 'payment_status' => 'pending',
                 'client_notes' => $data['client_notes'] ?? null,
             ]);
 
             // Ajouter les items
             foreach ($cartItems as $item) {
-                $product = $products[$item['product_id']];
-                $this->addOrderItem($order, $item, $product);
-                $product->decreaseStock($item['quantity']);
+                $this->addOrderItem($order, $item);
             }
 
-            $deliverySlot->incrementOrderCount();
+            // Le créneau n'a plus de compteur à incrémenter : sa capacité se
+            // déduit des commandes de la date visée (DeliverySlot::bookedCountsOn).
+
+            // Créer le paiement en attente de validation manuelle (admin)
+            $this->paymentService->createManualPayment(
+                $order,
+                $data['payment_provider'] ?? null,
+                $data['payer_phone'] ?? null
+            );
 
             // Créer la notification
             $this->notificationService->sendOrderCreatedNotification($order);
@@ -256,10 +229,8 @@ class OrderService
                 'cancellation_reason' => $reason,
             ]);
 
-            // Libérer le créneau
-            if ($order->delivery_slot_id) {
-                $order->deliverySlot->decrementOrderCount();
-            }
+            // Rien à libérer : une commande annulée est exclue du décompte de
+            // capacité, la place se rouvre d'elle-même.
 
             // Rembourser si nécessaire
             if ($order->payment_status === 'completed') {
@@ -276,41 +247,89 @@ class OrderService
     /**
      * Ajouter un item à la commande
      */
-    private function addOrderItem(Order $order, array $item, Product $product): OrderItem
+    private function addOrderItem(Order $order, array $item): OrderItem
     {
+        $product = Product::find($item['product_id']);
+
         return OrderItem::create([
             'order_id' => $order->id,
             'product_id' => $item['product_id'],
             'quantity' => $item['quantity'],
             'quantity_unit' => $item['quantity_unit'] ?? 'piece',
-            'unit_price' => $product->base_price,
-            'total_price' => $product->base_price * $item['quantity'],
+            'unit_price' => Money::round($product->base_price),
+            'total_price' => Money::lineTotal($product->base_price, $item['quantity']),
             'special_instructions' => $item['special_instructions'] ?? null,
-            'removed_ingredients' => isset($item['removed_ingredients']) ? json_encode($item['removed_ingredients']) : null,
+            'removed_ingredients' => $item['removed_ingredients'] ?? null,
+            'substitution_preference' => $item['substitution_preference'] ?? 'replace',
         ]);
+    }
+
+    /**
+     * Calculer les frais de livraison : base de la zone de l'adresse,
+     * supplement du creneau, puis regles de la zone (livraison offerte,
+     * minimum de commande).
+     */
+    private function calculateDeliveryFee($addressId, $slotId, float $subtotal): int
+    {
+        $address = \App\Models\Address::with('zone')->find($addressId);
+        $zone = $address?->zone;
+        $slot = $slotId ? \App\Models\DeliverySlot::find($slotId) : null;
+
+        $fee = (float) ($zone?->base_delivery_fee ?? self::DEFAULT_DELIVERY_FEE);
+        $fee += (float) ($slot?->additional_fee ?? 0);
+
+        if (!$zone) {
+            return Money::round($fee);
+        }
+
+        if ($zone->free_delivery_threshold !== null && $subtotal >= (float) $zone->free_delivery_threshold) {
+            $fee = 0;
+        }
+
+        if ($subtotal < (float) $zone->min_order_amount) {
+            if ($zone->small_order_action === 'block') {
+                throw new \Exception(sprintf(
+                    'Le minimum de commande pour la zone %s est de %s FCFA.',
+                    $zone->name,
+                    number_format(Money::round($zone->min_order_amount), 0, ',', ' ')
+                ));
+            }
+
+            $fee += (float) $zone->small_order_fee;
+        }
+
+        return Money::round($fee);
     }
 
     /**
      * Calculer sous-total
      */
-    private function calculateSubtotal(array $cartItems, array $products): float
+    private function calculateSubtotal(array $cartItems): float
     {
         $subtotal = 0;
 
+        // Chaque ligne est arrondie AVANT la somme, exactement comme dans
+        // addOrderItem() : sinon le sous-total affiche ne correspond pas a la
+        // somme des lignes que le client a sous les yeux.
         foreach ($cartItems as $item) {
-            $product = $products[$item['product_id']];
-            $subtotal += $product->base_price * $item['quantity'];
+            if ($item['type'] === 'product') {
+                $product = Product::find($item['product_id']);
+                $subtotal += Money::lineTotal($product->base_price, $item['quantity']);
+            } elseif ($item['type'] === 'menu') {
+                $menu = \App\Models\Menu::find($item['menu_id']);
+                $subtotal += Money::lineTotal($menu->discounted_price ?? $menu->base_price, $item['quantity']);
+            }
         }
 
         return $subtotal;
     }
 
     /**
-     * Calculer taxes (10%)
+     * Calculer taxes (10%), au franc entier.
      */
-    private function calculateTax(float $subtotal): float
+    private function calculateTax(float $subtotal): int
     {
-        return $subtotal * 0.10;
+        return Money::percentOf($subtotal, self::TAX_RATE_PERCENT);
     }
 
     /**
@@ -332,6 +351,6 @@ class OrderService
             return 0;
         }
 
-        return $promo->calculateDiscount($orderTotal);
+        return Money::round($promo->calculateDiscount($orderTotal));
     }
 }

@@ -3,17 +3,28 @@
 /backend/node_modules/
 /backend/.env
 /backend/.env.*
-/backend/storage/
-/backend/bootstrap/cache/
+!/backend/.env.example
+/backend/bootstrap/cache/*
+!/backend/bootstrap/cache/.gitkeep
+/backend/.phpunit.result.cache
+
+# Lien cree par `php artisan storage:link`. Il pointe vers un chemin absolu du
+# conteneur : versionne, il casse le build Docker (« invalid file request »).
+/backend/public/storage
+
+# Storage : on versionne l'OSSATURE des dossiers, jamais leur contenu.
+# Sans ces .gitkeep, un clone frais demarre sans storage/framework et Laravel
+# echoue sur « Please provide a valid cache path ».
+/backend/storage/**
+!/backend/storage/**/
+!/backend/storage/**/.gitkeep
 
 # Next.js
 /frontend/node_modules/
 /frontend/.next/
+/frontend/out/
 /frontend/.env*
-/frontend/.next-dev*.log
-
-# Local development tools
-/.tools/
+!/frontend/.env.example
 
 # System files
 .DS_Store
@@ -21,3 +32,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Outils locaux (Node portable) et journaux du serveur de dev
+/.tools/
+/frontend/.next-dev*.log
