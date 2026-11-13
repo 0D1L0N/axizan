@@ -4,7 +4,7 @@
     "description": "Axiz\u00e1n - Plateforme de livraison alimentaire (Backend Laravel)",
     "require": {
         "php": "^8.2",
-        "laravel/framework": "^11.0",
+        "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.8",
         "doctrine/dbal": "^3.7",
@@ -45,12 +45,5 @@
         ]
     },
     "minimum-stability": "stable",
-    "prefer-stable": true,
-    "config": {
-        "policy": {
-            "advisories": {
-                "block": false
-            }
-        }
-    }
+    "prefer-stable": true
 }

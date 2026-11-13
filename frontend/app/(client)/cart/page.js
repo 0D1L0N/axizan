@@ -6,10 +6,12 @@ import CartItem from '@/app/components/CartItem';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import Link from 'next/link';
+import { formatPrice, roundXof } from '@/app/lib/units';
 
 export default function CartPage() {
-  const { items, subtotal, total, promoCode, setPromoCode, setPromoDiscount, clearCart } = useCart();
+  const { items, subtotal, clearCart } = useCart();
   const router = useRouter();
+  const tax = roundXof(subtotal * 0.1);
 
   const handleCheckout = () => {
     if (items.length === 0) {
@@ -49,44 +51,25 @@ export default function CartPage() {
               <div className="bg-white rounded-lg shadow p-6 sticky top-20">
                 <h2 className="text-xl font-bold mb-6">📋 Résumé</h2>
 
-                {/* Promo */}
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold mb-2">Code Promo</label>
-                  <input
-                    type="text"
-                    placeholder="BIENVENUE20"
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary"
-                    value={promoCode || ''}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                  />
-                  <button className="w-full mt-2 bg-gray-600 text-white py-2 rounded hover:bg-gray-700">
-                    Appliquer
-                  </button>
-                </div>
-
-                {/* Calcul */}
-                <div className="space-y-2 text-sm mb-6 border-t pt-4">
+                {/* Calcul — memes arrondis que le checkout et le serveur.
+                    Le champ « code promo » a ete retire : il affichait une
+                    reduction de 500 XOF qui n'etait jamais appliquee. */}
+                <div className="space-y-2 text-sm mb-6">
                   <div className="flex justify-between">
                     <span>Sous-total:</span>
-                    <span className="font-semibold">{subtotal.toFixed(0)} XOF</span>
+                    <span className="font-semibold">{formatPrice(roundXof(subtotal))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Taxes (10%):</span>
-                    <span className="font-semibold">{(subtotal * 0.1).toFixed(0)} XOF</span>
+                    <span className="font-semibold">{formatPrice(tax)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Livraison:</span>
-                    <span className="font-semibold">À déterminer</span>
+                    <span className="font-semibold">Calculée à l’étape suivante</span>
                   </div>
-                  {promoCode && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Réduction:</span>
-                      <span className="font-semibold">-500 XOF</span>
-                    </div>
-                  )}
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total:</span>
-                    <span className="text-primary">{(total + subtotal * 0.1).toFixed(0)} XOF</span>
+                    <span>Total hors livraison:</span>
+                    <span className="text-primary">{formatPrice(roundXof(subtotal) + tax)}</span>
                   </div>
                 </div>
 

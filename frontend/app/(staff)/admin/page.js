@@ -30,10 +30,24 @@ function AdminPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Reference constatee par l'admin sur le compte marchand, par commande.
+  // Le backend l'exige : sans elle, le paiement n'est pas tracable.
+  const [references, setReferences] = useState({});
+
   const handleValidate = async (orderId) => {
     setError('');
+    const reference = (references[orderId] || '').trim();
+    if (!reference) {
+      setError('Saisissez la référence de la transaction vue sur le compte marchand.');
+      return;
+    }
     try {
-      await adminService.validatePayment(orderId);
+      await adminService.validatePayment(orderId, { reference_number: reference });
+      setReferences((current) => {
+        const next = { ...current };
+        delete next[orderId];
+        return next;
+      });
       await load();
     } catch (err) {
       setError(err.response?.data?.message || 'La validation a échoué');
@@ -72,17 +86,32 @@ function AdminPage() {
           ) : (
             <div className="space-y-3">
               {pending.map((order) => (
-                <div key={order.id} className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+                <div key={order.id} className="bg-white rounded-lg shadow p-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold">{order.order_number} — {order.client?.name}</p>
-                    <p className="text-sm text-gray-500">{Number(order.total).toFixed(0)} XOF</p>
+                    <p className="text-sm text-gray-500">
+                      {Number(order.total).toFixed(0)} XOF
+                      {order.payment?.payment_provider && ` · ${order.payment.payment_provider.toUpperCase()}`}
+                      {order.payment?.phone_number && ` · ${order.payment.phone_number}`}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Référence déclarée par le client : {order.payment?.payer_declared_reference || 'aucune'}
+                    </p>
                   </div>
-                  <button
-                    onClick={() => handleValidate(order.id)}
-                    className="bg-primary text-white px-4 py-2 rounded font-semibold"
-                  >
-                    Valider le paiement
-                  </button>
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Référence vérifiée"
+                      className="border rounded px-3 py-2"
+                      value={references[order.id] || ''}
+                      onChange={(e) => setReferences({ ...references, [order.id]: e.target.value })}
+                    />
+                    <button
+                      onClick={() => handleValidate(order.id)}
+                      className="bg-primary text-white px-4 py-2 rounded font-semibold"
+                    >
+                      Valider le paiement
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

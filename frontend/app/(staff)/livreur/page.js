@@ -67,7 +67,7 @@ function LivreurPage() {
                 <div key={order.id} className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
                   <div>
                     <p className="font-semibold">{order.order_number} — {order.client?.name}</p>
-                    <p className="text-sm text-gray-500">{order.deliveryAddress?.quartier}</p>
+                    <p className="text-sm text-gray-500">{order.delivery_address?.quartier}</p>
                   </div>
                   <button
                     onClick={() => runAction(() => deliveryService.acceptDelivery(order.id))}

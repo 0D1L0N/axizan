@@ -199,7 +199,7 @@ class OrderController extends Controller
             // d'articles sans declencher une requete par ligne.
             ->with('items.product:id,name,price_type,image_url', 'client', 'deliveryAddress', 'delivery')
             ->latest()
-            ->paginate($request->get('limit', 10));
+            ->paginate($this->perPage($request, 10));
 
         return response()->json([
             'success' => true,
@@ -386,8 +386,9 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'error' => 'not_found'], 404);
         }
 
+        // Un statut hors enum faisait planter la relecture du modele (500).
         $validated = $request->validate([
-            'status' => 'required|string',
+            'status' => ['required', \Illuminate\Validation\Rule::enum(OrderStatus::class)],
         ]);
 
         $order->update(['status' => $validated['status']]);

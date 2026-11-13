@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -18,15 +19,28 @@ class DeliveryService
      */
     public function assignOrderToLivreur(Order $order, User $livreur): Delivery
     {
-        if ($order->status !== \App\Enums\OrderStatus::READY) {
-            throw new \Exception("Seules les commandes prêtes peuvent être livrées");
-        }
+        // Deux livreurs peuvent toucher « Accepter » au meme instant : la
+        // commande est verrouillee et relue, le second recoit un refus clair
+        // au lieu d'une erreur SQL sur la contrainte d'unicite.
+        $delivery = DB::transaction(function () use ($order, $livreur) {
+            $locked = Order::whereKey($order->id)->lockForUpdate()->first();
 
-        $delivery = Delivery::create([
-            'order_id' => $order->id,
-            'livreur_id' => $livreur->id,
-            'status' => \App\Enums\DeliveryStatus::ASSIGNED,
-        ]);
+            if (!$locked || $locked->status !== \App\Enums\OrderStatus::READY) {
+                throw new \Exception("Seules les commandes prêtes peuvent être livrées");
+            }
+
+            if (Delivery::where('order_id', $locked->id)->exists()) {
+                throw new \Exception("Cette commande a déjà été prise par un autre livreur");
+            }
+
+            $locked->update(['livreur_id' => $livreur->id]);
+
+            return Delivery::create([
+                'order_id' => $locked->id,
+                'livreur_id' => $livreur->id,
+                'status' => \App\Enums\DeliveryStatus::ASSIGNED,
+            ]);
+        });
 
         Log::info("Delivery assigned for order {$order->order_number} to {$livreur->name}");
 
@@ -66,6 +80,10 @@ class DeliveryService
      */
     public function startDelivery(Delivery $delivery): Delivery
     {
+        if (!in_array($delivery->status, [\App\Enums\DeliveryStatus::ASSIGNED, \App\Enums\DeliveryStatus::PICKED_UP], true)) {
+            throw new \Exception("Cette livraison ne peut pas être démarrée");
+        }
+
         $delivery->update([
             'status' => \App\Enums\DeliveryStatus::IN_TRANSIT,
         ]);
@@ -84,6 +102,12 @@ class DeliveryService
      */
     public function confirmDelivery(Delivery $delivery, $photoFile = null, $signatureData = null, $notes = null): Delivery
     {
+        // Sans ce garde-fou, une livraison deja confirmee pouvait l'etre une
+        // seconde fois (et la commande « completee » deux fois).
+        if ($delivery->status !== \App\Enums\DeliveryStatus::IN_TRANSIT) {
+            throw new \Exception("Démarrez la livraison avant de la confirmer");
+        }
+
         $photoUrl = null;
 
         if ($photoFile) {

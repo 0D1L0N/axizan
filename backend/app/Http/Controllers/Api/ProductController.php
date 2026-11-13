@@ -53,7 +53,7 @@ class ProductController extends Controller
                 $query->orderByDesc('popularity_score');
         }
 
-        $products = $query->paginate($request->get('limit', 20));
+        $products = $query->paginate($this->perPage($request, 20));
 
         return response()->json([
             'success' => true,

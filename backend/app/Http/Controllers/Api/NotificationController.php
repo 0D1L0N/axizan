@@ -28,7 +28,7 @@ class NotificationController extends Controller
             $query->where('is_read', false);
         }
 
-        $notifications = $query->paginate($request->integer('limit', 20));
+        $notifications = $query->paginate($this->perPage($request, 20));
 
         return response()->json([
             'success' => true,
