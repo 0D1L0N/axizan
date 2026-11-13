@@ -59,8 +59,6 @@ export const deliveryService = {
 };
 
 export const paymentService = {
-  initiate: (orderId, phoneNumber) =>
-    api.post('/payments/initiate', { order_id: orderId, phone_number: phoneNumber }),
   checkStatus: (paymentId) => api.get(`/payments/${paymentId}/status`),
   getHistory: (params) => api.get('/payments/history', { params }),
 };
@@ -88,6 +86,9 @@ export const preparatorService = {
   accept: (orderId) => api.patch(`/preparateur/orders/${orderId}/accept`),
   start: (orderId, notes) => api.patch(`/preparateur/orders/${orderId}/start`, { notes }),
   ready: (orderId, notes) => api.patch(`/preparateur/orders/${orderId}/ready`, { notes }),
+  getSuppliers: () => api.get('/preparateur/suppliers'),
+  /** collection_status : collected | replaced | removed | pending */
+  updateItem: (orderId, itemId, data) => api.patch(`/preparateur/orders/${orderId}/items/${itemId}`, data),
 };
 
 export const adminService = {
@@ -111,6 +112,11 @@ export const adminService = {
   getKycDocument: (id) => api.get(`/admin/kyc/${id}/document`, { responseType: 'blob' }),
   approveKyc: (id) => api.post(`/admin/kyc/${id}/approve`),
   rejectKyc: (id, reason) => api.post(`/admin/kyc/${id}/reject`, { reason }),
+};
+
+export const promotionService = {
+  /** Apercu indicatif : la reduction reelle est recalculee a la commande. */
+  check: (code, subtotal) => api.post('/promotions/check', { code, subtotal }),
 };
 
 export const kycService = {

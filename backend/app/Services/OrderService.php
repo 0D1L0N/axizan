@@ -54,6 +54,23 @@ class OrderService
             $tax = $this->calculateTax($subtotal);
             $promoDiscount = 0;
 
+            // Code saisi par le client : on le resout en promotion, et un code
+            // refuse bloque la commande avec la raison — le client ne doit pas
+            // payer en croyant beneficier d'une reduction.
+            if (!empty($data['promo_code'])) {
+                $promo = Promotion::byCode($data['promo_code'])->lockForUpdate()->first();
+
+                if (!$promo) {
+                    throw new \Exception('Code promo inconnu.');
+                }
+
+                if ($reason = $promo->rejectionReasonFor($client, $subtotal)) {
+                    throw new \Exception($reason);
+                }
+
+                $data['promo_code_id'] = $promo->id;
+            }
+
             // Appliquer promo si fournie
             if (isset($data['promo_code_id'])) {
                 $promoDiscount = $this->applyPromotion($client, $data['promo_code_id'], $subtotal);
@@ -347,15 +364,7 @@ class OrderService
         // ensemble la derniere utilisation autorisee.
         $promo = Promotion::whereKey($promoId)->lockForUpdate()->first();
 
-        if (!$promo || !$promo->isValid()) {
-            return 0;
-        }
-
-        if (!$promo->canBeUsedBy($client)) {
-            return 0;
-        }
-
-        if ($orderTotal < $promo->min_order_amount) {
+        if (!$promo || $promo->rejectionReasonFor($client, $orderTotal) !== null) {
             return 0;
         }
 

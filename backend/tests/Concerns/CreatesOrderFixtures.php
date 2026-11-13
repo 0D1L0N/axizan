@@ -26,6 +26,8 @@ trait CreatesOrderFixtures
         return User::factory()->create(array_merge([
             'phone' => '+22991' . random_int(100000, 999999),
             'role' => $role,
+            // Un livreur ne livre qu'une fois son identite verifiee.
+            'kyc_verified' => $role === 'livreur',
         ], $overrides));
     }
 

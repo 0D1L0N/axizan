@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\RecurringBasketController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\KycController;
+use App\Http\Controllers\Api\PromotionController;
 use App\Http\Controllers\Admin\DeliverySlotController as AdminDeliverySlotController;
 use App\Http\Controllers\Admin\DeliveryZoneController as AdminDeliveryZoneController;
 use App\Http\Controllers\Admin\KycController as AdminKycController;
@@ -99,7 +100,6 @@ Route::prefix('v1')->group(function () {
 
         // Payments
         Route::prefix('payments')->group(function () {
-            Route::post('/initiate', [PaymentController::class, 'initiate']);
             Route::get('/{id}/status', [PaymentController::class, 'checkStatus']);
             Route::get('/history', [PaymentController::class, 'history']);
         });
@@ -142,6 +142,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve']);
             Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject']);
         });
+
+        // Apercu d'un code promo au checkout (bride : evite de deviner des codes)
+        Route::post('/promotions/check', [PromotionController::class, 'check'])->middleware('throttle:20,1');
 
         // Verification d'identite (livreur)
         Route::get('/livreur/kyc', [KycController::class, 'show']);

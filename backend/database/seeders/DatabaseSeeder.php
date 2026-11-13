@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\DeliverySlot;
 use App\Models\DeliveryZone;
 use App\Models\Market;
+use App\Models\Promotion;
 use App\Models\Supplier;
 use App\Models\User;
 use Carbon\Carbon;
@@ -26,6 +27,41 @@ class DatabaseSeeder extends Seeder
             $this->seedLogistics();
             $this->seedMarketsAndSuppliers();
             $this->seedDemoAccounts();
+            $this->seedPromotions();
+        }
+    }
+
+    /**
+     * Codes promo de demonstration.
+     */
+    private function seedPromotions(): void
+    {
+        $promotions = [
+            [
+                'code' => 'BIENVENUE',
+                'description' => '10 % de réduction, plafonnée à 2 000 FCFA',
+                'discount_type' => 'percentage',
+                'discount_value' => 10,
+                'max_discount_amount' => 2000,
+                'min_order_amount' => 0,
+                'max_usage_per_user' => 1,
+            ],
+            [
+                'code' => 'MARCHE500',
+                'description' => '500 FCFA offerts dès 5 000 FCFA d’achats',
+                'discount_type' => 'fixed_amount',
+                'discount_value' => 500,
+                'min_order_amount' => 5000,
+                'max_usage_per_user' => 3,
+            ],
+        ];
+
+        foreach ($promotions as $promotion) {
+            Promotion::updateOrCreate(['code' => $promotion['code']], $promotion + [
+                'start_date' => now()->startOfDay(),
+                'end_date' => now()->addYear(),
+                'is_active' => true,
+            ]);
         }
     }
 
@@ -102,6 +138,8 @@ class DatabaseSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => $account['role'],
                     'status' => 'active',
+                    // Le livreur de demo est deja verifie : il peut livrer.
+                    'kyc_verified' => $account['role'] === 'livreur',
                     'remember_token' => bin2hex(random_bytes(10)),
                     // Le preparateur est rattache a un marche : sans cela il
                     // ne voit aucune commande.

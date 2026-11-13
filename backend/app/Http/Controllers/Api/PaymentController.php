@@ -13,45 +13,6 @@ class PaymentController extends Controller
     {}
 
     /**
-     * Initier paiement Mobile Money
-     */
-    public function initiate(Request $request)
-    {
-        $validated = $request->validate([
-            'order_id' => 'required|exists:orders,id',
-            'phone_number' => 'required|string|regex:/^\+?[0-9]{10,}$/',
-        ]);
-
-        $user = $request->user();
-        $order = $user->orders()->find($validated['order_id']);
-
-        if (!$order) {
-            return response()->json(['success' => false, 'error' => 'not_found'], 404);
-        }
-
-        try {
-            $payment = $this->paymentService->initiateMobileMoneyPayment(
-                $order,
-                $validated['phone_number']
-            );
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'payment_id' => $payment->id,
-                    'status' => $payment->status,
-                    'message' => 'Veuillez confirmer le paiement sur votre téléphone',
-                ],
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 400);
-        }
-    }
-
-    /**
      * Vérifier statut paiement
      */
     public function checkStatus($paymentId, Request $request)

@@ -39,6 +39,7 @@ class OrderController extends Controller
             'payment_provider' => 'nullable|in:mtn,moov,celtiis',
             'payer_phone' => 'nullable|string|max:30',
             'promo_code_id' => 'nullable|exists:promotions,id',
+            'promo_code' => 'nullable|string|max:50',
             'client_notes' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
             'items.*.type' => 'required|in:product,menu',

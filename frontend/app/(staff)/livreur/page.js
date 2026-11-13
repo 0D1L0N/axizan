@@ -5,8 +5,10 @@ import { deliveryService } from '@/app/services';
 import { withRole } from '@/app/lib/auth-hoc';
 import Header from '@/app/components/Header';
 import KycCard from '@/app/components/KycCard';
+import { useAuth } from '@/app/contexts/AuthContext';
 
 function LivreurPage() {
+  const { user } = useAuth();
   const [ready, setReady] = useState([]);
   const [mine, setMine] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +62,7 @@ function LivreurPage() {
         <section>
           <h2 className="text-xl font-bold mb-4">Commandes prêtes ({ready.length})</h2>
           {loading ? <p>Chargement...</p> : ready.length === 0 ? (
-            <p className="text-gray-500">Aucune commande prête pour l'instant.</p>
+            <p className="text-gray-500">Aucune commande prête pour l’instant.</p>
           ) : (
             <div className="space-y-3">
               {ready.map((order) => (
@@ -71,7 +73,9 @@ function LivreurPage() {
                   </div>
                   <button
                     onClick={() => runAction(() => deliveryService.acceptDelivery(order.id))}
-                    className="bg-primary text-white px-4 py-2 rounded font-semibold"
+                    disabled={!user?.kyc_verified}
+                    title={user?.kyc_verified ? undefined : 'Identité à faire vérifier avant de livrer'}
+                    className="bg-primary text-white px-4 py-2 rounded font-semibold disabled:bg-gray-400"
                   >
                     Accepter la livraison
                   </button>

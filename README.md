@@ -1,228 +1,117 @@
-# 🍲 Axizán - Plateforme de Livraison Alimentaire Bénin
+# Axizán — le marché béninois livré chez vous
 
-Application complète de livraison de produits alimentaires avec support multi-rôles (client, préparateur, livreur, admin).
+Axizán permet de commander des produits frais du marché (Dantokpa, Saint-Michel…) et de se faire livrer à Cotonou et environs. Un **préparateur** fait les courses chez des fournisseurs partenaires, un **livreur** apporte la commande, un **administrateur** valide les paiements et pilote la logistique.
 
-## 📋 Architecture Globale
+## Fonctionnalités
 
-```
-Axizán (3 couches)
-├── Frontend (Next.js + Tailwind + PWA)
-├── Backend API (Laravel REST)
-└── Database (PostgreSQL)
+| Rôle | Ce qu'il peut faire |
+|---|---|
+| **Client** | Catalogue et recherche, panier synchronisé entre appareils, choix de l'adresse, du jour et du créneau, code promo, paiement Mobile Money avec déclaration de la référence, suivi de commande étape par étape, notifications, recommande en un clic |
+| **Préparateur** | Commandes payées de son marché, prise en charge, collecte article par article (acheté, remplacé, retiré) avec le fournisseur, commande marquée prête |
+| **Livreur** | Vérification d'identité, commandes prêtes, acceptation, départ, confirmation de livraison |
+| **Admin** | Validation des paiements (référence vérifiée obligatoire), création des comptes préparateur et livreur, zones et créneaux de livraison avec leurs tarifs, vérification d'identité des livreurs |
 
-4 Rôles:
-├── Client (mobile app, commandes, tracking)
-├── Préparateur (commandes, achat marché)
-├── Livreur (livraisons, photos preuve)
-└── Admin (dashboard, gestion système)
-```
+### Règles métier
+- **Paiement** : aucune API opérateur n'est branchée. Le client envoie l'argent au numéro marchand (MTN, Moov, Celtiis) et déclare sa référence. L'admin la vérifie sur le compte marchand, puis valide le paiement. Un préparateur ne voit une commande qu'une fois son paiement validé.
+- **Créneaux** : au moins une heure d'avance, dans les horaires du marché (8 h–19 h), jusqu'à 7 jours à l'avance. La capacité d'un créneau se compte par jour.
+- **Tarifs par zone** : frais de base, supplément éventuel du créneau, livraison offerte au-delà d'un seuil, minimum de commande (frais en plus ou refus).
+- **Montants** : en francs CFA entiers, avec un arrondi unique pour tout le système (`App\Support\Money`).
+- **Livreurs** : seul un livreur dont la pièce d'identité a été validée peut prendre une livraison. Les documents sont stockés sur un disque privé.
 
-## 🗂️ Structure du Projet
+## Stack
 
-```
-axizan/
-├── backend/                 # Laravel API
-│   ├── app/
-│   │   ├── Http/
-│   │   │   └── Controllers/
-│   │   ├── Models/
-│   │   ├── Services/
-│   │   └── Enums/
-│   ├── database/
-│   │   ├── migrations/
-│   │   └── seeders/
-│   ├── routes/
-│   ├── config/
-│   └── .env.example
-├── frontend/                # Next.js App
-│   ├── app/
-│   │   ├── (auth)/
-│   │   ├── (client)/
-│   │   ├── (admin)/
-│   │   ├── components/
-│   │   └── services/
-│   ├── public/
-│   ├── tailwind.config.js
-│   └── .env.example
-└── docs/
-    ├── API.md
-    ├── DATABASE.md
-    └── SETUP.md
-```
+- **Backend** : Laravel 12 (PHP 8.2+), API REST, authentification Sanctum
+- **Frontend** : Next.js 15 (App Router), Tailwind CSS, PWA installable
+- **Données** : PostgreSQL 15, Redis (cache et file d'attente)
+- **Outils** : Docker Compose, Mailpit (mails de dev), GitHub Actions (CI)
 
-## 🚀 Stack Technique
+## Démarrage (Docker)
 
-- **Backend**: Laravel 11, PHP 8.2+
-- **Frontend**: Next.js 15, React 19, Tailwind CSS
-- **Database**: PostgreSQL 15+
-- **Cache**: Redis (optionnel)
-- **File Storage**: S3 compatible (AWS S3 / Cloudflare R2)
-- **Payments**: Mobile Money API (MTN, Celtiis)
-- **SMS**: Twilio / Local SMS provider
-- **Real-time**: Laravel Echo + Pusher / Soketi
-
-## 📦 Modules Backend
-
-1. **Auth** - Authentification multi-rôle, JWT
-2. **Users** - Gestion utilisateurs par rôle
-3. **Products** - Catalogue, catégories, prix
-4. **Menus** - Templates menus modifiables
-5. **Orders** - Workflow complet commande
-6. **Delivery** - Zones, créneaux, assignation
-7. **Payments** - Mobile Money, factures
-8. **Promotions** - Codes promo, règles
-9. **Notifications** - SMS, in-app, email
-10. **Analytics** - Dashboard admin
-
-## 📱 Modules Frontend
-
-1. **Client App**
-   - Catalogue produits
-   - Menus rapides
-   - Panier modifiable
-   - Adresses et livraison
-   - Paiement Mobile Money
-   - Suivi commande temps réel
-
-2. **Préparateur**
-   - Liste commandes disponibles
-   - Prise en charge
-   - Marché (achat)
-   - Validation prêt
-
-3. **Livreur**
-   - Commandes prêtes
-   - Navigation
-   - Upload photo preuve
-   - Confirmation livraison
-
-4. **Admin**
-   - Dashboard KPI
-   - Gestion produits
-   - Gestion menus
-   - Gestion promotions
-   - Gestion utilisateurs
-   - Statistiques
-
-## 🔄 Workflow Commande
-
-```
-CREATION → ACCEPTED → PREPARING → READY → IN_DELIVERY → DELIVERED → COMPLETED
-             ↓          ↓          ↓        ↓            ↓
-        (Client)  (Préparateur) (Admin)  (Livreur)   (Système)
-```
-
-## 📊 Modèle de Données
-
-Voir [DATABASE.md](docs/DATABASE.md) pour le schéma complet.
-
-### Tables principales:
-- `users` - Utilisateurs avec rôles
-- `products` - Catalogue produits
-- `menus` - Templates menus
-- `orders` - Commandes
-- `order_items` - Items commande
-- `addresses` - Adresses livraison
-- `delivery_slots` - Créneaux horaires
-- `deliveries` - Assignations livreur
-- `payments` - Historique paiements
-- `promotions` - Codes promo
-- `notifications` - Logs notifications
-
-## 🔐 Sécurité
-
-- JWT Authentication
-- Role-Based Access Control (RBAC)
-- Input validation & sanitization
-- SQL injection prevention
-- CORS configuration
-- Rate limiting API
-- HTTPS only (production)
-
-## 📡 API Endpoints
-
-Voir [API.md](docs/API.md) pour tous les endpoints.
-
-### Exemples:
-```
-POST   /api/auth/register          - Inscription
-POST   /api/auth/login             - Connexion
-GET    /api/products               - Liste produits
-POST   /api/orders                 - Créer commande
-GET    /api/orders/{id}            - Détail commande
-PUT    /api/orders/{id}/status     - MAJ statut
-GET    /api/admin/dashboard        - Dashboard admin
-```
-
-## ⚡ Démarrage Rapide
-
-### Backend
+Prérequis : Docker Desktop démarré.
 
 ```bash
-cd backend
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan db:seed
-php artisan serve
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+docker compose up -d --build
+
+# Première fois uniquement
+docker compose exec laravel php artisan key:generate
+docker compose exec laravel php artisan migrate --seed
+docker compose exec laravel php artisan storage:link
 ```
 
-### Frontend
+| Service | Adresse |
+|---|---|
+| Site | http://localhost:3000 |
+| API | http://localhost:8000/api/v1 |
+| Mails envoyés (Mailpit) | http://localhost:8025 |
 
+### Comptes de démonstration
+Mot de passe : `password123`
+
+| Rôle | Email |
+|---|---|
+| Client | `client@test.com` |
+| Préparateur (marché Dantokpa) | `preparateur@test.com` |
+| Livreur (identité vérifiée) | `livreur@test.com` |
+| Admin | `admin@test.com` |
+
+Codes promo : `BIENVENUE` (−10 %, plafonné à 2 000 FCFA, une fois par client) et `MARCHE500` (−500 FCFA dès 5 000 FCFA d'achats).
+
+### Parcours de démo
+1. **Client** : ajouter des produits, passer au checkout, choisir un créneau, appliquer `BIENVENUE`, puis confirmer.
+2. **Admin** (`/admin`) : saisir une référence et valider le paiement.
+3. **Préparateur** (`/preparateur`) : accepter la commande, collecter chaque article, puis la marquer prête.
+4. **Livreur** (`/livreur`) : accepter la livraison, la démarrer, puis la confirmer.
+5. **Client** : la commande passe à « Livrée » et une notification arrive.
+
+### Commandes utiles
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose logs -f laravel                          # journaux de l'API
+docker compose exec laravel ./vendor/bin/phpunit        # tests backend
+docker compose exec laravel php artisan migrate:fresh --seed   # base remise à zéro
+docker compose stop                                     # tout arrêter
 ```
 
-Frontend accessible: http://localhost:3000
-Backend API: http://localhost:8000/api
+## Structure
 
-## 📱 PWA Installation
-
-L'app est installable sur mobile:
-1. Ouvrir sur mobile
-2. Menu → "Installer l'app"
-3. Icône sur écran d'accueil
-
-## 🧪 Testing
-
-```bash
-cd backend
-php artisan test
-
-cd ../frontend
-npm run test
+```
+backend/
+  app/Http/Controllers/Api/    endpoints par domaine (commandes, panier, livraison…)
+  app/Http/Controllers/Admin/  zones, créneaux, vérification d'identité
+  app/Services/                logique métier (OrderService, PaymentService…)
+  app/Support/Money.php        arrondi des montants
+  database/migrations/         schéma
+  database/seeders/            catalogue et données de démo
+  tests/Feature/               tests de bout en bout de l'API
+frontend/
+  app/(client)/                panier, checkout, commandes, compte, notifications
+  app/(staff)/                 espaces admin, préparateur, livreur
+  app/(auth)/                  connexion, inscription, mot de passe oublié
+  app/components/              composants partagés
+  app/services/index.js        appels à l'API
 ```
 
-## 📈 Performance
+## API
 
-- Pagination des listes (20 items/page)
-- Cache Redis (sessions, queries)
-- Image optimization (WebP, srcset)
-- Code splitting (Next.js)
-- Lazy loading composants
-- Database indexing (queries optimisées)
+Toutes les routes sont préfixées par `/api/v1`. Les réponses ont la forme `{ "success": bool, "data": …, "message"?: … }`. Les routes authentifiées attendent l'en-tête `Authorization: Bearer <token>`.
 
-## 🤝 Contributing
+| Domaine | Routes |
+|---|---|
+| Authentification | `POST auth/register`, `auth/login`, `auth/logout`, `auth/forgot-password`, `auth/reset-password`, `auth/change-password` · `GET auth/me` · `PATCH auth/profile` |
+| Catalogue (public) | `GET products`, `products/{id}`, `categories`, `delivery-zones`, `delivery-slots`, `payment-methods` |
+| Panier | `GET/POST/DELETE cart` · `POST cart/merge` · `DELETE cart/{productId}` |
+| Commandes | `POST/GET orders` · `GET/DELETE orders/{id}` · `POST orders/{id}/declare-payment`, `orders/{id}/reorder` · `POST promotions/check` |
+| Adresses, notifications | `addresses` (CRUD) · `GET notifications`, `notifications/unread-count` · `POST notifications/read-all` |
+| Préparateur | `GET preparateur/orders`, `preparateur/orders/mine`, `preparateur/suppliers` · `PATCH preparateur/orders/{id}/accept\|start\|ready`, `preparateur/orders/{id}/items/{itemId}` |
+| Livreur | `GET deliveries/ready-orders`, `deliveries/mine` · `POST deliveries/{orderId}/accept`, `deliveries/{id}/confirm` · `PATCH deliveries/{id}/start` · `GET/POST livreur/kyc` |
+| Admin | `GET admin/payments/pending` · `POST admin/orders/{id}/validate-payment`, `admin/staff` · `admin/delivery-zones` et `admin/delivery-slots` (CRUD) · `admin/kyc/pending`, `admin/kyc/{id}/document\|approve\|reject` |
 
-1. Fork le repo
-2. Feature branch (`git checkout -b feature/amazing`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push (`git push origin feature/amazing`)
-5. Pull request
+La liste complète : `docker compose exec laravel php artisan route:list --path=api`.
 
-## 📄 License
+## Qualité
 
-MIT License - voir LICENSE.md
-
-## 🆘 Support
-
-- Issues: GitHub Issues
-- Documentation: /docs
-- Email: support@axizan.bj
-
----
-
-**Axizán** - Livraison alimentaire moderne au Bénin 🇧🇯
+- **119 tests** de bout en bout de l'API (`tests/Feature`) : parcours complet de commande, paiements, créneaux, arrondis, promotions, vérification d'identité, sécurité.
+- Les tests tournent toujours sur une base SQLite en mémoire, jamais sur la base de développement (`tests/TestCase.php`).
+- La CI GitHub Actions lance les tests backend, ainsi que le lint et le build du frontend, à chaque push.
+- `composer audit` : aucune vulnérabilité connue.

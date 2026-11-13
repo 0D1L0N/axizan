@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { preparatorService } from '@/app/services';
+import { preparatorService, productService } from '@/app/services';
 import { withRole } from '@/app/lib/auth-hoc';
 import Header from '@/app/components/Header';
+import CollectItemRow from '@/app/components/CollectItemRow';
 
 function PreparatorPage() {
   const [available, setAvailable] = useState([]);
   const [mine, setMine] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [suppliers, setSuppliers] = useState([]);
+  const [products, setProducts] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -28,6 +31,12 @@ function PreparatorPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Fournisseurs du marche et catalogue (pour les remplacements) : charges une fois.
+  useEffect(() => {
+    preparatorService.getSuppliers().then((res) => setSuppliers(res.data.data)).catch(() => {});
+    productService.getProducts({ limit: 100 }).then((res) => setProducts(res.data.data)).catch(() => {});
+  }, []);
 
   const runAction = async (fn) => {
     setError('');
@@ -49,7 +58,7 @@ function PreparatorPage() {
         <section>
           <h2 className="text-xl font-bold mb-4">Commandes disponibles ({available.length})</h2>
           {loading ? <p>Chargement...</p> : available.length === 0 ? (
-            <p className="text-gray-500">Aucune commande payée en attente pour l'instant.</p>
+            <p className="text-gray-500">Aucune commande payée en attente pour l’instant.</p>
           ) : (
             <div className="space-y-3">
               {available.map((order) => (
@@ -103,21 +112,24 @@ function PreparatorPage() {
                   </div>
                   </div>
 
-                  {/* Liste de courses : ce que le préparateur doit acheter au marché */}
-                  <ul className="mt-4 border-t border-gray-100 pt-3 space-y-1">
+                  {/* Liste de courses : chaque article est renseigne avant de
+                      pouvoir marquer la commande prete. */}
+                  {order.status === 'preparing' && (
+                    <p className="mt-3 text-sm text-gray-600">
+                      {(order.items || []).filter((i) => i.collection_status !== 'pending').length}
+                      /{(order.items || []).length} article(s) traité(s)
+                    </p>
+                  )}
+                  <ul className="mt-2 border-t border-gray-100 divide-y divide-gray-100">
                     {(order.items || []).map((item) => (
-                      <li key={item.id} className="flex items-center justify-between gap-4 text-sm">
-                        <span className="font-medium">
-                          {item.product?.name || `Produit #${item.product_id}`} — {Number(item.quantity)} {item.quantity_unit}
-                        </span>
-                        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${
-                          item.substitution_preference === 'remove'
-                            ? 'bg-orange-100 text-orange-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {item.substitution_preference === 'remove' ? 'si absent : retirer' : 'si absent : remplacer'}
-                        </span>
-                      </li>
+                      <CollectItemRow
+                        key={`${item.id}-${item.collection_status}-${item.supplier_id}`}
+                        item={item}
+                        suppliers={suppliers}
+                        products={products}
+                        editable={order.status === 'preparing'}
+                        onUpdate={(data) => runAction(() => preparatorService.updateItem(order.id, item.id, data))}
+                      />
                     ))}
                   </ul>
                 </div>

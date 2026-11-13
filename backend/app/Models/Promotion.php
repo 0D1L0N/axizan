@@ -89,6 +89,32 @@ class Promotion extends Model
         return true;
     }
 
+    /**
+     * Pourquoi ce code ne s'applique pas a cette commande, en clair pour le
+     * client — ou null s'il s'applique.
+     */
+    public function rejectionReasonFor(User $user, float $subtotal): ?string
+    {
+        if (!$this->isValid()) {
+            return 'Ce code promo n’est plus valable.';
+        }
+
+        if (!$this->canBeUsedBy($user)) {
+            return $this->applicable_to === 'first_order' && $user->orders()->exists()
+                ? 'Ce code est réservé à une première commande.'
+                : 'Vous avez déjà utilisé ce code promo.';
+        }
+
+        if ($subtotal < (float) $this->min_order_amount) {
+            return sprintf(
+                'Ce code s’applique dès %s FCFA d’achats.',
+                number_format(\App\Support\Money::round($this->min_order_amount), 0, ',', ' ')
+            );
+        }
+
+        return null;
+    }
+
     public function calculateDiscount($orderTotal, $orderItems = null)
     {
         $discount = 0;

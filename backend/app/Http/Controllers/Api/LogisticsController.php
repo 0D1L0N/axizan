@@ -72,6 +72,7 @@ class LogisticsController extends Controller
                     'time_start' => $slot->time_start,
                     'time_end' => $slot->time_end,
                     'display_label' => $slot->display_label,
+                    'additional_fee' => $slot->additional_fee,
                     'available_spots' => $spots,
                     'is_bookable' => $inTime && $spots > 0,
                     'unavailable_reason' => match (true) {

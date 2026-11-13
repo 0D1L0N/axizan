@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/app/contexts/CartContext';
 import { useToast } from '@/app/contexts/ToastContext';
-import { addressService, logisticsService, orderService, paymentMethodService } from '@/app/services';
+import { addressService, logisticsService, orderService, paymentMethodService, promotionService } from '@/app/services';
 import { withAuth } from '@/app/lib/auth-hoc';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
@@ -15,6 +15,29 @@ import { unitShort, formatQuantity, formatPrice, roundXof } from '@/app/lib/unit
 import { AlertCircle, Loader2, MapPin, Plus } from 'lucide-react';
 
 const DAY_LABELS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+
+/**
+ * Frais de livraison estimes avec les memes regles que le serveur
+ * (OrderService::calculateDeliveryFee) : base de la zone, supplement du
+ * creneau, livraison offerte au-dela du seuil, minimum de commande.
+ */
+function estimateDeliveryFee(zone, slot, subtotal) {
+  let fee = Number(zone?.base_delivery_fee ?? 500) + Number(slot?.additional_fee ?? 0);
+  if (!zone) return { fee, blockedBelow: null };
+
+  if (zone.free_delivery_threshold !== null && zone.free_delivery_threshold !== undefined
+    && subtotal >= Number(zone.free_delivery_threshold)) {
+    fee = 0;
+  }
+
+  const minimum = Number(zone.min_order_amount ?? 0);
+  if (subtotal < minimum) {
+    if (zone.small_order_action === 'block') return { fee, blockedBelow: minimum };
+    fee += Number(zone.small_order_fee ?? 0);
+  }
+
+  return { fee, blockedBelow: null };
+}
 
 /** Date locale au format YYYY-MM-DD — toISOString() convertirait en UTC et
  *  ferait sauter un jour en soirée. */
@@ -57,6 +80,10 @@ function CheckoutPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState('');
+  const [applyingPromo, setApplyingPromo] = useState(false);
   const toast = useToast();
 
   // Une cle par tentative de commande, generee une seule fois : un renvoi du
@@ -124,10 +151,34 @@ function CheckoutPage() {
   };
 
   const selectedZone = zones.find((z) => z.id === selectedAddress?.delivery_zone_id);
-  const deliveryFee = selectedZone ? Number(selectedZone.base_delivery_fee) : 500;
+  const selectedSlot = slots.find((s) => String(s.id) === String(selectedSlotId));
+  const { fee: deliveryFee, blockedBelow } = estimateDeliveryFee(selectedZone, selectedSlot, subtotal);
+  const promoDiscount = appliedPromo ? roundXof(appliedPromo.discount) : 0;
   // Arrondi identique au serveur, sinon le recapitulatif ment sur le total.
   const tax = roundXof(subtotal * 0.1);
-  const total = roundXof(subtotal) + tax + roundXof(deliveryFee);
+  const total = roundXof(subtotal) + tax + roundXof(deliveryFee) - promoDiscount;
+
+  const applyPromo = async () => {
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoError('');
+    setApplyingPromo(true);
+    try {
+      const res = await promotionService.check(code, roundXof(subtotal));
+      setAppliedPromo(res.data.data);
+    } catch (err) {
+      setAppliedPromo(null);
+      setPromoError(err.response?.data?.message || 'Code promo invalide.');
+    } finally {
+      setApplyingPromo(false);
+    }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput('');
+    setPromoError('');
+  };
 
   const bookableCount = slots.filter((slot) => slot.is_bookable).length;
 
@@ -147,6 +198,7 @@ function CheckoutPage() {
           delivery_date: deliveryDate,
           payment_method: 'manual',
           payment_provider: paymentProvider || undefined,
+          promo_code: appliedPromo?.code || undefined,
           items: items.map((item) => ({
             type: 'product',
             product_id: item.product_id,
@@ -395,12 +447,52 @@ function CheckoutPage() {
             <div className="mt-5 space-y-2.5 text-ink-700">
               <Row label="Sous-total" value={formatPrice(subtotal)} />
               <Row label="Taxes (10 %)" value={formatPrice(tax)} />
-              <Row label="Livraison" value={formatPrice(deliveryFee)} />
+              <Row label="Livraison" value={deliveryFee === 0 ? 'Offerte' : formatPrice(deliveryFee)} />
+              {appliedPromo && (
+                <div className="flex items-center justify-between text-forest-700">
+                  <span>
+                    Code {appliedPromo.code}{' '}
+                    <button onClick={removePromo} className="text-sm underline text-ink-500 hover:text-ink-700">retirer</button>
+                  </span>
+                  <span className="font-semibold">−{formatPrice(promoDiscount)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between border-t border-ink-900/8 pt-3">
                 <span className="font-bold text-ink-900">Total</span>
                 <span className="font-display text-3xl font-semibold text-forest-800">{formatPrice(total)}</span>
               </div>
             </div>
+
+            {!appliedPromo && (
+              <div className="mt-5">
+                <label htmlFor="promo" className="text-sm font-semibold text-ink-700">Code promo</label>
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    id="promo"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === 'Enter' && applyPromo()}
+                    placeholder="BIENVENUE"
+                    className="min-w-0 flex-1 rounded-full border border-ink-900/12 px-4 py-2.5 uppercase"
+                  />
+                  <button
+                    onClick={applyPromo}
+                    disabled={applyingPromo || !promoInput.trim()}
+                    className="rounded-full border border-forest-800 px-5 py-2.5 font-semibold text-forest-800 hover:bg-cream-100 disabled:opacity-50"
+                  >
+                    {applyingPromo ? '…' : 'Appliquer'}
+                  </button>
+                </div>
+                {promoError && <p className="mt-1.5 text-sm text-red-600">{promoError}</p>}
+              </div>
+            )}
+
+            {blockedBelow && (
+              <p className="mt-5 flex items-start gap-2 rounded-2xl bg-red-50 p-3 text-sm text-red-700">
+                <AlertCircle size={17} className="mt-0.5 shrink-0" />
+                Le minimum de commande pour {selectedZone?.name} est de {formatPrice(blockedBelow)}.
+              </p>
+            )}
 
             <div className="mt-6 border-t border-ink-900/8 pt-6">
               <h3 className="font-display text-xl font-semibold text-forest-800">Comment payez-vous&nbsp;?</h3>
@@ -419,7 +511,7 @@ function CheckoutPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={loading || !selectedAddressId || !selectedSlotId}
+              disabled={loading || !selectedAddressId || !selectedSlotId || Boolean(blockedBelow)}
               className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gold-500 px-6 py-4 font-bold text-forest-950 shadow-glow transition hover:bg-gold-400 disabled:cursor-not-allowed disabled:bg-ink-300 disabled:text-white disabled:shadow-none"
             >
               {loading && <Loader2 size={17} className="animate-spin" />}

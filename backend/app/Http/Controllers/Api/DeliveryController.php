@@ -71,6 +71,16 @@ class DeliveryController extends Controller
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
+        // Une commande payee ne part pas avec un inconnu : l'identite du
+        // livreur doit avoir ete verifiee par un administrateur.
+        if (!$user->kyc_verified) {
+            return response()->json([
+                'success' => false,
+                'error' => 'kyc_required',
+                'message' => 'Votre identité doit être vérifiée avant de prendre des livraisons.',
+            ], 403);
+        }
+
         $order = Order::find($orderId);
 
         if (!$order || $order->status !== OrderStatus::READY) {

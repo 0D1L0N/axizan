@@ -46,6 +46,15 @@ class KycTest extends TestCase
         $this->getJson('/api/v1/auth/me')->assertJsonMissingPath('data.kyc_document_url');
     }
 
+    public function test_an_unverified_livreur_cannot_take_a_delivery(): void
+    {
+        Sanctum::actingAs($this->createStaff('livreur', ['kyc_verified' => false]), ['*']);
+
+        $this->postJson('/api/v1/deliveries/1/accept')
+            ->assertForbidden()
+            ->assertJsonPath('error', 'kyc_required');
+    }
+
     public function test_only_livreurs_can_submit_a_document(): void
     {
         $this->submitDocument($this->createClient())->assertForbidden();
