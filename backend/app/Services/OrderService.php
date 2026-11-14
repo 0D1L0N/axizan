@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\OrderStatus;
 use App\Exceptions\SlotUnavailableException;
+use App\Models\DeliveryClosure;
 use App\Models\DeliverySlot;
 use App\Models\Order;
 use App\Models\OrderEvent;
@@ -161,6 +162,22 @@ class OrderService
 
         if (! $slot || ! $slot->is_active) {
             throw new SlotUnavailableException('Ce créneau de livraison n’est plus proposé.');
+        }
+
+        if (! $slot->zone?->is_active) {
+            throw new SlotUnavailableException('Cette zone n’est plus desservie pour le moment.');
+        }
+
+        // Une journee peut se fermer pendant qu'un client est dans le tunnel :
+        // c'est justement le cas d'une fermeture en urgence — marche en feu,
+        // route coupee. Le controle d'entree l'a laisse passer il y a deux
+        // minutes ; celui-ci a le dernier mot.
+        if (DeliveryClosure::closes($date, $slot->zone_id)) {
+            $reason = DeliveryClosure::reasonFor($date, $slot->zone_id);
+
+            throw new SlotUnavailableException(
+                'Nous ne livrons pas ce jour-là'.($reason ? " : {$reason}" : '.')
+            );
         }
 
         if ($slot->bookedCountOn($date) >= $slot->max_orders_per_slot) {

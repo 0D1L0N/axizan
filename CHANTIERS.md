@@ -1267,3 +1267,71 @@ personne n'a relu ce qui restait connecté.
    Contact réel, et 27 produits sur 49 sans photo.
 4. **Relire le parcours livreur en entier.** Trois trouvailles en une journée
    sur le même chemin : il y en a probablement d'autres.
+
+## Les créneaux (20 sept. 2026)
+
+`/admin/creneaux`.
+
+Depuis ce matin la dernière place d'un créneau est défendue par un verrou. Mais
+la capacité n'était **réglable que dans la base** : un marché qui déborde un
+samedi, une zone qu'on suspend le temps de trouver un préparateur, un jour férié
+— chacun demandait une requête SQL à la main.
+
+### Fermer un jour n'existait pas comme notion
+
+Les créneaux sont des gabarits : une plage horaire, une capacité, un
+interrupteur. Rien ne permettait de dire « le 1er août, on ne livre pas ». Le
+seul moyen était de désactiver les créneaux à la main la veille au soir et de
+penser à les rouvrir le lendemain — ce que personne ne fait un jour férié.
+
+D'où `delivery_closures`. Une fermeture porte sur une **date**, pas sur un
+créneau : quand un marché ne tient pas, il ne tient à aucune heure.
+
+`zone_id` nul ferme toute la couverture — férié national, grève des transports.
+Renseigné, il ne ferme qu'une zone : une inondation à Godomey n'empêche pas de
+livrer à Fidjrosse.
+
+### La règle qui tient tout l'écran
+
+**Rien ici ne touche aux commandes déjà posées.** Fermer une journée, suspendre
+une zone ou baisser une capacité arrête les **nouvelles** réservations.
+
+Annuler douze commandes payées est une décision d'argent. Elle se prend une par
+une dans la salle de contrôle, avec un remboursement à la clé — et une grève
+annoncée la veille est parfois levée le matin.
+
+Mais les taire serait pire que tout : l'administrateur croirait la journée
+réglée, et douze clients attendraient une livraison que personne ne fera. La
+réponse porte donc les numéros, et l'écran affiche « N en attente » sur chaque
+fermeture.
+
+### Trois points de passage, pas un
+
+La fermeture est vérifiée à l'affichage des créneaux, à la porte d'entrée de la
+commande, **et dans la transaction d'écriture**. Ce dernier n'est pas du zèle :
+une fermeture d'urgence — marché en feu, route coupée — se pose pendant que des
+clients sont déjà dans le tunnel.
+
+Côté client, les créneaux d'une journée fermée restent **affichés et barrés**,
+avec le motif. Les masquer laisserait croire à un bug, exactement comme pour un
+créneau déjà passé. Et « aucun créneau disponible » ressemble à une panne, alors
+que « nous ne livrons pas le 1er août, fête nationale » fait choisir un autre
+jour au lieu d'appeler le bureau.
+
+### La capacité ne descend pas sous ce qui est réservé
+
+Le plancher est le **jour le plus chargé** de l'horizon — pas la moyenne, pas le
+total. Sous ce seuil, le créneau afficherait un nombre de places négatif, et
+surtout le chiffre mentirait : les commandes sont posées, quelqu'un devra les
+préparer. Baisser la capacité sert à ne plus en prendre, pas à effacer celles
+qu'on a prises.
+
+L'écran montre la charge jour par jour sur la semaine ouverte. Une capacité se
+règle en regardant ce qui se remplit ; le chiffre seul ne dirait pas s'il est
+bien réglé.
+
+### Suspendre une zone n'est pas annuler sa journée
+
+Une zone suspendue n'est plus proposée et ses créneaux ne se réservent plus. Ce
+qui y est déjà posé continue : le préparateur ira, le livreur livrera. Le
+message le dit, avec le nombre.

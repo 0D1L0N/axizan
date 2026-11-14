@@ -8,6 +8,7 @@ use App\Services\OrderService;
 use App\Models\Order;
 use App\Models\Address;
 use App\Models\CartItem;
+use App\Models\DeliveryClosure;
 use App\Models\DeliverySlot;
 use App\Models\IdempotencyKey;
 use App\Models\OrderEvent;
@@ -169,6 +170,19 @@ class OrderController extends Controller
                     'Il faut au moins %d minutes entre la commande et le début du créneau. Choisissez un créneau plus tard.',
                     DeliverySlot::LEAD_TIME_MINUTES
                 ),
+            ], 422);
+        }
+
+        // Une journée fermée : jour férié, marché qui ne tient pas, route
+        // coupée. Le motif est repris tel quel — « nous ne livrons pas ce
+        // jour-là » sans raison donne l'impression d'une panne.
+        if (DeliveryClosure::closes($date, $slot->zone_id)) {
+            $reason = DeliveryClosure::reasonFor($date, $slot->zone_id);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'day_closed',
+                'message' => 'Nous ne livrons pas ce jour-là'.($reason ? " : {$reason}" : '.'),
             ], 422);
         }
 

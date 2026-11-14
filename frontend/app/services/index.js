@@ -170,6 +170,23 @@ export const adminService = {
   setStaffSuspended: (id, suspended, reason) =>
     api.patch(`/admin/personnel/${id}/status`, { suspended, reason }),
 
+  /* ---- Les créneaux : capacité, zones, jours fermés ---- */
+
+  getSlots: () => api.get('/admin/creneaux'),
+  /** La capacité ne peut pas descendre sous ce qui est déjà réservé (422 `below_booked`). */
+  updateSlot: (id, data) => api.patch(`/admin/creneaux/${id}`, data),
+  /** Suspendre une zone arrête les nouvelles commandes ; celles déjà posées sont livrées. */
+  setZoneActive: (id, isActive) => api.patch(`/admin/creneaux/zones/${id}`, { is_active: isActive }),
+  /**
+   * Ferme une journée. `zoneId` nul ferme toute la couverture.
+   *
+   * Ne touche à aucune commande déjà posée — la réponse les liste, à traiter
+   * une par une dans la salle de contrôle.
+   */
+  closeDay: (closedOn, zoneId, reason) =>
+    api.post('/admin/creneaux/fermetures', { closed_on: closedOn, zone_id: zoneId, reason }),
+  reopenDay: (id) => api.delete(`/admin/creneaux/fermetures/${id}`),
+
   /* ---- Le catalogue : retirer, corriger, illustrer ---- */
 
   getCatalogue: (params) => api.get('/admin/catalogue', { params }),

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeliveryClosure;
 use App\Models\DeliverySlot;
 use App\Models\DeliveryZone;
 use Carbon\Carbon;
@@ -58,13 +59,30 @@ class LogisticsController extends Controller
 
         $booked = DeliverySlot::bookedCountsOn($date);
 
+        /*
+         * Une journee fermee ferme tous ses creneaux d'un coup.
+         *
+         * Le motif est renvoye avec : « aucun creneau disponible » ressemble a
+         * une panne, alors que « nous ne livrons pas le 1er aout, fete
+         * nationale » se comprend et fait choisir un autre jour. Les creneaux
+         * restent affiches, barres, comme pour un creneau deja passe — les
+         * masquer laisserait croire a un bug.
+         */
+        $closedReason = DeliveryClosure::reasonFor($date, $request->input('zone_id'));
+        $isClosed = $closedReason !== null
+            || DeliveryClosure::closes($date, $request->input('zone_id'));
+
         $slots = $query
             ->orderBy('time_start')
             ->get()
-            ->map(function (DeliverySlot $slot) use ($date, $booked) {
+            ->map(function (DeliverySlot $slot) use ($date, $booked, $isClosed) {
                 $taken = $booked[$slot->id] ?? 0;
                 $spots = max(0, $slot->max_orders_per_slot - $taken);
                 $inTime = $slot->isBookableOn($date);
+
+                // Sans filtre de zone, chaque creneau repond pour la sienne :
+                // une inondation a Godomey n'empeche pas de livrer a Fidjrosse.
+                $closed = $isClosed || DeliveryClosure::closes($date, $slot->zone_id);
 
                 return [
                     'id' => $slot->id,
@@ -73,8 +91,9 @@ class LogisticsController extends Controller
                     'time_end' => $slot->time_end,
                     'display_label' => $slot->display_label,
                     'available_spots' => $spots,
-                    'is_bookable' => $inTime && $spots > 0,
+                    'is_bookable' => ! $closed && $inTime && $spots > 0,
                     'unavailable_reason' => match (true) {
+                        $closed => 'closed',
                         ! $inTime => 'too_soon',
                         $spots <= 0 => 'full',
                         default => null,
@@ -92,6 +111,8 @@ class LogisticsController extends Controller
                 'market_hours' => DeliverySlot::MARKET_OPENS_AT.'–'.DeliverySlot::MARKET_CLOSES_AT,
                 'horizon_days' => DeliverySlot::BOOKING_HORIZON_DAYS,
                 'has_bookable' => $slots->contains('is_bookable', true),
+                'closed' => $isClosed,
+                'closed_reason' => $closedReason,
             ],
         ]);
     }

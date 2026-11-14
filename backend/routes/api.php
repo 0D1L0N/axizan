@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\AdminProductController;
 use App\Http\Controllers\Api\AdminClientController;
 use App\Http\Controllers\Api\AdminStaffController;
+use App\Http\Controllers\Api\AdminSlotController;
 
 /*
 |--------------------------------------------------------------------------
@@ -171,6 +172,14 @@ Route::prefix('v1')->group(function () {
             Route::get('/personnel', [AdminStaffController::class, 'index']);
             Route::get('/personnel/{id}', [AdminStaffController::class, 'show']);
             Route::patch('/personnel/{id}/status', [AdminStaffController::class, 'setStatus']);
+
+            // Les créneaux : la capacité, les zones, et les jours fermés.
+            // Rien ici ne touche aux commandes déjà posées.
+            Route::get('/creneaux', [AdminSlotController::class, 'index']);
+            Route::patch('/creneaux/{id}', [AdminSlotController::class, 'update']);
+            Route::patch('/creneaux/zones/{id}', [AdminSlotController::class, 'setZoneActive']);
+            Route::post('/creneaux/fermetures', [AdminSlotController::class, 'close']);
+            Route::delete('/creneaux/fermetures/{id}', [AdminSlotController::class, 'reopen']);
 
             // Catalogue : retirer un article introuvable, corriger un prix,
             // poser une photo. Rien ne se supprime — les factures pointent dessus.
